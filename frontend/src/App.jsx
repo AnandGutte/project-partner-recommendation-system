@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const DEFAULT_DOMAINS = {
   hdbscan: ["DevOps & Scripting", "Testing & Sparse Data", "Unknown Users"],
@@ -18,6 +18,13 @@ const DEFAULT_DOMAINS = {
   ],
 };
 
+const SAMPLE_PROMPTS = [
+  "Looking for a Python developer experienced with PyTorch, NLP, and recommendation systems.",
+  "Full-stack web engineer building open-source React, Node.js, and TypeScript developer tools.",
+  "DevOps and systems programmer working with Go, Docker, Kubernetes, and Linux automation.",
+  "Game developer and modder with C++, Rust, and graphics pipeline experience.",
+];
+
 function App() {
   const [activeTab, setActiveTab] = useState("hybrid"); // "hybrid" | "bio"
   const [username, setUsername] = useState("");
@@ -31,12 +38,16 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [metadata, setMetadata] = useState(null);
+  const [apiStatus, setApiStatus] = useState("checking"); // "online" | "offline" | "checking"
+  const [activeEngine, setActiveEngine] = useState(null);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
   const [hybridResults, setHybridResults] = useState(null);
   const [bioResults, setBioResults] = useState(null);
   const [lastQuery, setLastQuery] = useState(null);
 
   const resultsRef = useRef(null);
+  const aboutDialogRef = useRef(null);
 
   // Load verified metadata on mount
   useEffect(() => {
@@ -47,22 +58,38 @@ function App() {
         if (req && typeof req.then === "function") {
           req
             .then((res) => {
-              if (isMounted && res && res.data && res.data.clustering_methods) {
+              if (isMounted && res && res.data) {
                 setMetadata(res.data);
+                setApiStatus("online");
               }
             })
             .catch(() => {
-              // Graceful fallback to verified constants if endpoint is unreachable
+              if (isMounted) {
+                setApiStatus("offline");
+              }
             });
         }
       } catch {
-        // Fallback
+        if (isMounted) {
+          setApiStatus("offline");
+        }
       }
     }
     return () => {
       isMounted = false;
     };
   }, []);
+
+  // Handle ESC key for modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && showAboutModal) {
+        setShowAboutModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAboutModal]);
 
   const domainOptions =
     metadata?.clustering_methods?.[clusteringMethod]?.domains ||
@@ -114,7 +141,6 @@ function App() {
     };
 
     try {
-      // Prefer modern /api/recommend endpoint; fall back to legacy /recommend
       let response;
       try {
         response = await axios.post(`${API_BASE}/api/recommend`, payload);
@@ -148,7 +174,6 @@ function App() {
         count: records.length,
       });
 
-      // Accessible scroll to results
       setTimeout(() => {
         if (resultsRef.current) {
           resultsRef.current.focus();
@@ -199,7 +224,7 @@ function App() {
 
       const data = response.data;
       let records = [];
-      let engineName = "Sentence-BERT / TF-IDF";
+      let engineName = "TF-IDF Fallback";
 
       if (Array.isArray(data)) {
         records = data;
@@ -208,6 +233,7 @@ function App() {
         engineName = data.engine || engineName;
       }
 
+      setActiveEngine(engineName);
       setBioResults(records);
       setLastQuery({
         type: "bio",
@@ -255,22 +281,129 @@ function App() {
         Skip to main search content
       </a>
 
+      {/* Top Application Header */}
       <header className="app-header" role="banner">
         <div className="header-container">
-          <div className="header-badge">CS 5661 Data Science Portfolio Showcase</div>
+          <div className="header-brand">
+            <div className="brand-logo" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="18" r="3" />
+                <circle cx="6" cy="6" r="3" />
+                <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+                <path d="M6 9v12" />
+              </svg>
+            </div>
+            <div className="brand-info">
+              <span className="brand-name">Project Partner</span>
+              <span className="brand-sub">GitHub Developer Matching</span>
+            </div>
+          </div>
+
+          <div className="header-controls">
+            {/* Live API Health Status */}
+            <div
+              className={`api-status-badge status-${apiStatus}`}
+              title={
+                apiStatus === "online"
+                  ? "Connected to Flask Backend API (Port 5000)"
+                  : apiStatus === "checking"
+                  ? "Connecting to API..."
+                  : "API Offline or Unreachable"
+              }
+              role="status"
+              aria-label={`API Status: ${apiStatus}`}
+            >
+              <span className="status-dot" aria-hidden="true" />
+              <span className="status-text">
+                {apiStatus === "online" ? "API Online" : apiStatus === "checking" ? "Checking API..." : "API Offline"}
+              </span>
+            </div>
+
+            {/* About Modal Trigger */}
+            <button
+              type="button"
+              className="btn-header-link"
+              onClick={() => setShowAboutModal(true)}
+              aria-haspopup="dialog"
+            >
+              About & Team
+            </button>
+
+            {/* Verified GitHub Repository Link */}
+            <a
+              href="https://github.com/AnandGutte/project-partner-recommendation-system"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-header-repo"
+              aria-label="View Project Partner repository on GitHub in new tab"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+              <span>GitHub ↗</span>
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Showcase Section */}
+      <section className="hero-section" aria-label="Introduction">
+        <div className="hero-container">
+          <div className="hero-badge">CS 5661 Data Science Portfolio Showcase</div>
           <h1 className="header-title">🤝 GitHub Project Partner Recommendation</h1>
+          <p className="hero-headline">Find your next great collaborator.</p>
           <p className="header-subtitle">
             Discover software collaborators based on language repositories, developer activity metrics, and bio semantics.
           </p>
-          {metadata && metadata.total_users && (
-            <div className="header-stats" aria-label="Dataset Statistics">
-              <span className="stat-pill">📊 {metadata.total_users.toLocaleString()} Aligned Developer Profiles</span>
-              <span className="stat-pill">🧠 Sentence-BERT Vector Space</span>
-              <span className="stat-pill">🏷️ HDBSCAN & DBSCAN Domain Clusters</span>
+
+          {/* Verified Product & Engine Metrics */}
+          <div className="metric-grid" aria-label="Verified Platform Metrics">
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="metric-icon" aria-hidden="true">📊</span>
+                <span className="metric-label">Dataset Profiles</span>
+              </div>
+              <div className="metric-value">
+                {metadata?.total_users ? metadata.total_users.toLocaleString() : "3,890"}
+              </div>
+              <div className="metric-desc">
+                {metadata?.total_users ? `${metadata.total_users.toLocaleString()} Aligned Developer Profiles` : "3,890 Aligned Developer Profiles"}
+              </div>
             </div>
-          )}
+
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="metric-icon" aria-hidden="true">⚖️</span>
+                <span className="metric-label">Hybrid Strategy</span>
+              </div>
+              <div className="metric-value">3-Way Heuristic</div>
+              <div className="metric-desc">Content 45% • Activity 35% • Bio 20%</div>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="metric-icon" aria-hidden="true">🏷️</span>
+                <span className="metric-label">Clustering Domains</span>
+              </div>
+              <div className="metric-value">11 Categories</div>
+              <div className="metric-desc">HDBSCAN (3) & DBSCAN (8) Models</div>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="metric-icon" aria-hidden="true">🧠</span>
+                <span className="metric-label">Active Engine</span>
+              </div>
+              <div className="metric-value">
+                {activeEngine ? (activeEngine.includes("Sentence-BERT") ? "Sentence-BERT" : "TF-IDF Fallback") : "Sentence-BERT / TF-IDF"}
+              </div>
+              <div className="metric-desc">
+                {activeEngine ? activeEngine : "Vector Space & Lexical Models"}
+              </div>
+            </div>
+          </div>
         </div>
-      </header>
+      </section>
 
       <main id="main-content" className="main-content" tabIndex="-1">
         {/* Navigation Tabs for Search Modes */}
@@ -356,9 +489,9 @@ function App() {
           >
             <form onSubmit={handleHybridSubmit} noValidate>
               <div className="panel-intro">
-                <h2 className="panel-heading">Target Developer & Criteria</h2>
+                <h2 className="panel-heading">Target Developer & Partner Criteria</h2>
                 <p className="panel-desc">
-                  Input a GitHub username to compute real-time cosine similarities across languages, engagement metrics, and bio embeddings.
+                  Input a GitHub username to compute real-time similarities across repository languages, developer activity metrics, and bio vectors.
                 </p>
               </div>
 
@@ -367,7 +500,7 @@ function App() {
                 <div className="sample-users-box">
                   <span className="sample-label">Try sample profile:</span>
                   <div className="sample-pills">
-                    {metadata.sample_usernames.slice(0, 5).map((u) => (
+                    {metadata.sample_usernames.slice(0, 6).map((u) => (
                       <button
                         key={u}
                         type="button"
@@ -385,35 +518,40 @@ function App() {
               )}
 
               <div className="form-grid">
+                {/* Primary Dominant Username Field */}
                 <div className="form-group full-width">
                   <label htmlFor="input-username" className="form-label required">
                     GitHub Username <span className="visually-hidden">(required)</span>
                   </label>
-                  <input
-                    id="input-username"
-                    type="text"
-                    className="form-control"
-                    placeholder="GitHub Username (e.g. abhay, mojombo)"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      if (validationError) setValidationError("");
-                    }}
-                    maxLength={39}
-                    disabled={loading}
-                    aria-required="true"
-                    aria-invalid={activeTab === "hybrid" && !!validationError}
-                    aria-describedby={
-                      activeTab === "hybrid" && validationError
-                        ? "validation-error-msg username-hint"
-                        : "username-hint"
-                    }
-                  />
+                  <div className="input-with-icon">
+                    <span className="input-prefix" aria-hidden="true">@</span>
+                    <input
+                      id="input-username"
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. abhay, mojombo, defunkt"
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        if (validationError) setValidationError("");
+                      }}
+                      maxLength={39}
+                      disabled={loading}
+                      aria-required="true"
+                      aria-invalid={activeTab === "hybrid" && !!validationError}
+                      aria-describedby={
+                        activeTab === "hybrid" && validationError
+                          ? "validation-error-msg username-hint"
+                          : "username-hint"
+                      }
+                    />
+                  </div>
                   <span id="username-hint" className="form-hint">
                     Target user against which candidate similarities will be calculated.
                   </span>
                 </div>
 
+                {/* Filter Controls */}
                 <div className="form-group">
                   <label htmlFor="input-location" className="form-label">
                     Preferred Location (Optional)
@@ -528,10 +666,35 @@ function App() {
           >
             <form onSubmit={handleBioSubmit} noValidate>
               <div className="panel-intro">
-                <h2 className="panel-heading">Semantic Bio & Project Concept Match</h2>
+                <div className="panel-intro-header">
+                  <h2 className="panel-heading">Semantic Bio & Project Concept Match</h2>
+                  <span className="engine-indicator-pill" title="Current backend search engine">
+                    Active Engine: {activeEngine || "Sentence-BERT / TF-IDF"}
+                  </span>
+                </div>
                 <p className="panel-desc">
-                  Describe what you want to build or the technical background you are looking for. Dense vector embeddings identify matching developers.
+                  Describe what you want to build or the technical background you are looking for. Vector embeddings or lexical models identify matching developers.
                 </p>
+              </div>
+
+              {/* Quick Inspiration Prompts */}
+              <div className="sample-prompts-box">
+                <span className="sample-label">Example queries:</span>
+                <div className="sample-prompt-chips">
+                  {SAMPLE_PROMPTS.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="prompt-chip"
+                      onClick={() => {
+                        setBioQuery(prompt);
+                        if (validationError) setValidationError("");
+                      }}
+                    >
+                      {prompt.slice(0, 48)}...
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="form-group full-width">
@@ -541,7 +704,7 @@ function App() {
                 <textarea
                   id="input-bio"
                   className="form-control textarea"
-                  rows="3"
+                  rows="4"
                   placeholder="e.g. Looking for a Python machine learning collaborator with experience in NLP, PyTorch, and recommendation algorithms..."
                   value={bioQuery}
                   onChange={(e) => {
@@ -558,9 +721,16 @@ function App() {
                       : "bio-hint"
                   }
                 />
-                <span id="bio-hint" className="form-hint">
-                  {bioQuery.length}/1,000 characters. SBERT model computes cosine distance against candidate embeddings.
-                </span>
+                <div className="textarea-footer">
+                  <span id="bio-hint" className="form-hint">
+                    {activeEngine?.includes("Sentence-BERT")
+                      ? "Sentence-BERT model computes cosine distance against candidate bio embeddings."
+                      : "Lexical TF-IDF representations compute similarity against candidate profile text."}
+                  </span>
+                  <span className="char-counter" aria-live="polite">
+                    {bioQuery.length} / 1,000
+                  </span>
+                </div>
               </div>
 
               <div className="form-grid">
@@ -591,7 +761,7 @@ function App() {
                 >
                   {loading ? (
                     <span className="spinner-text">
-                      <span className="spinner" aria-hidden="true" /> Searching Vector Space...
+                      <span className="spinner" aria-hidden="true" /> Searching Candidate Space...
                     </span>
                   ) : (
                     "Search Semantic Matches"
@@ -647,7 +817,7 @@ function App() {
                 </div>
               </div>
 
-              {/* Score Explanation Disclaimer (Requirement 4) */}
+              {/* Score Explanation Disclaimer (Requirement 4 & 6) */}
               <div className="score-disclaimer" role="note">
                 <span className="disclaimer-icon" aria-hidden="true">💡</span>
                 <p>
@@ -672,10 +842,15 @@ function App() {
                     <article className="candidate-card" key={r.Username || i} aria-labelledby={`cand-${i}-name`}>
                       <div className="card-top">
                         <div className="cand-info">
-                          <h3 id={`cand-${i}-name`} className="cand-username">
-                            @{r.Username}
-                          </h3>
-                          {r.Location && <span className="cand-loc">📍 {r.Location}</span>}
+                          <div className="cand-avatar" aria-hidden="true">
+                            {(r.Username || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 id={`cand-${i}-name`} className="cand-username">
+                              @{r.Username}
+                            </h3>
+                            {r.Location && <span className="cand-loc">📍 {r.Location}</span>}
+                          </div>
                         </div>
                         <div className="score-chip" title="Heuristic hybrid ranking score in [0.0, 1.0]">
                           <span className="score-label">Portfolio Match</span>
@@ -685,18 +860,47 @@ function App() {
                         </div>
                       </div>
 
-                      {/* Score Breakdown when present */}
+                      {/* Component Score Breakdown */}
                       {(r.content_score != null || r.collab_score != null || r.bio_score != null) && (
                         <div className="score-breakdown">
-                          <span className="breakdown-tag" title="Language & Repo portfolio overlap">
-                            Content: {(r.content_score * 100).toFixed(0)}%
-                          </span>
-                          <span className="breakdown-tag" title="Developer engagement scale similarity">
-                            Activity: {(r.collab_score * 100).toFixed(0)}%
-                          </span>
-                          <span className="breakdown-tag" title="Bio semantic embedding similarity">
-                            Bio: {(r.bio_score * 100).toFixed(0)}%
-                          </span>
+                          <div className="breakdown-item" title="Language & Repo portfolio overlap (45% weight)">
+                            <div className="breakdown-label-row">
+                              <span className="breakdown-tag">Content: {(r.content_score * 100).toFixed(0)}%</span>
+                              <span className="breakdown-weight">45% weight</span>
+                            </div>
+                            <div className="breakdown-meter-bg" aria-hidden="true">
+                              <div
+                                className="breakdown-meter-fill fill-content"
+                                style={{ width: `${Math.min(100, Math.max(0, r.content_score * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="breakdown-item" title="Developer engagement scale similarity (35% weight)">
+                            <div className="breakdown-label-row">
+                              <span className="breakdown-tag">Activity: {(r.collab_score * 100).toFixed(0)}%</span>
+                              <span className="breakdown-weight">35% weight</span>
+                            </div>
+                            <div className="breakdown-meter-bg" aria-hidden="true">
+                              <div
+                                className="breakdown-meter-fill fill-activity"
+                                style={{ width: `${Math.min(100, Math.max(0, r.collab_score * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="breakdown-item" title="Bio semantic embedding similarity (20% weight)">
+                            <div className="breakdown-label-row">
+                              <span className="breakdown-tag">Bio: {(r.bio_score * 100).toFixed(0)}%</span>
+                              <span className="breakdown-weight">20% weight</span>
+                            </div>
+                            <div className="breakdown-meter-bg" aria-hidden="true">
+                              <div
+                                className="breakdown-meter-fill fill-bio"
+                                style={{ width: `${Math.min(100, Math.max(0, r.bio_score * 100))}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -707,9 +911,9 @@ function App() {
                       )}
 
                       {r.explanation && (
-                        <p className="match-explanation">
+                        <div className="match-explanation">
                           <strong>Match Reason:</strong> {r.explanation}
-                        </p>
+                        </div>
                       )}
 
                       {r.Languages && r.Languages.length > 0 && (
@@ -755,7 +959,7 @@ function App() {
                 <div>
                   <h2 className="results-title">🧠 Semantic Concept Recommendations</h2>
                   <p className="results-meta">
-                    Vector Space Search • Engine: <strong>{lastQuery?.engine || "Sentence-BERT"}</strong> • Retrieved{" "}
+                    Vector Space Search • Engine: <strong>{lastQuery?.engine || "TF-IDF Fallback"}</strong> • Retrieved{" "}
                     <strong>{bioResults.length}</strong> matching candidate{bioResults.length !== 1 ? "s" : ""}
                   </p>
                 </div>
@@ -764,7 +968,7 @@ function App() {
               <div className="score-disclaimer" role="note">
                 <span className="disclaimer-icon" aria-hidden="true">💡</span>
                 <p>
-                  <strong>About Semantic Similarity:</strong> Values represent cosine similarity between dense vector representations of developer bios. In accordance with platform privacy controls, raw candidate bios are kept confidential.
+                  <strong>About Profile Similarity:</strong> Values represent cosine similarity computed by the active search engine ({lastQuery?.engine || "TF-IDF Fallback"}). {lastQuery?.engine?.includes("Sentence-BERT") ? "Dense vector embeddings represent semantic meaning." : "Lexical TF-IDF representations score word frequency alignment."} In accordance with platform privacy controls, raw candidate bios are kept confidential.
                 </p>
               </div>
 
@@ -780,13 +984,20 @@ function App() {
                     <article className="candidate-card" key={r.Username || i} aria-labelledby={`bio-cand-${i}-name`}>
                       <div className="card-top">
                         <div className="cand-info">
-                          <h3 id={`bio-cand-${i}-name`} className="cand-username">
-                            @{r.Username}
-                          </h3>
-                          {r.Location && <span className="cand-loc">📍 {r.Location}</span>}
+                          <div className="cand-avatar bio-avatar" aria-hidden="true">
+                            {(r.Username || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 id={`bio-cand-${i}-name`} className="cand-username">
+                              @{r.Username}
+                            </h3>
+                            {r.Location && <span className="cand-loc">📍 {r.Location}</span>}
+                          </div>
                         </div>
                         <div className="score-chip bio-chip" title="Cosine similarity in vector space">
-                          <span className="score-label">Semantic Cosine</span>
+                          <span className="score-label">
+                            {lastQuery?.engine?.includes("Sentence-BERT") ? "Semantic Cosine" : "Profile Similarity"}
+                          </span>
                           <span className="score-val">
                             {r.similarity != null ? `${(r.similarity * 100).toFixed(0)}%` : "N/A"}
                           </span>
@@ -818,15 +1029,94 @@ function App() {
         </section>
       </main>
 
-      {/* University Attribution & Contributor Acknowledgements Footer */}
+      {/* About & Contributor Modal (WCAG Accessible Dialog) */}
+      {showAboutModal && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowAboutModal(false)}
+          role="presentation"
+        >
+          <div
+            ref={aboutDialogRef}
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="about-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2 id="about-modal-title" className="modal-title">
+                About Project Partner
+              </h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setShowAboutModal(false)}
+                aria-label="Close about dialog"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-lead">
+                <strong>GitHub Project Partner Recommendation System</strong> is a portfolio showcase implementation based on the <strong>CS 5661 Data Science university project</strong> at California State University, Los Angeles (Cal State LA).
+              </p>
+              <div className="modal-section">
+                <h3 className="modal-subtitle">Original University Team Contributors & Roles</h3>
+                <ul className="modal-team-list">
+                  <li><strong>Ekta Mulkalwar</strong> – Lead Data Engineer & Content-Based Modeling</li>
+                  <li><strong>Apoorva Durge</strong> – NLP & Feature Extraction (TF-IDF & Sentence-BERT)</li>
+                  <li><strong>Anand Gutte</strong> – Collaborative Filtering & Activity Similarity Developer</li>
+                  <li><strong>Mansi Aher</strong> – Data Cleaning Specialist</li>
+                  <li><strong>Anvaya Chandrika Gudibanda Sreesha</strong> – Visualization & Geo Insights</li>
+                  <li><strong>Shalini Nistala</strong> – Evaluation & Metrics Formulator</li>
+                  <li><strong>Shah Drashti Kirtibai</strong> – Encoding & Feature Engineering</li>
+                  <li><strong>Neel Jaysukhbhai Khunt</strong> – Repository & Documentation Lead</li>
+                  <li><strong>Movva Jeevan Sidhardha</strong> – Location Processing Support</li>
+                  <li><strong>Sai Kiran Bandapally</strong> – Repo Insights Engineer</li>
+                </ul>
+              </div>
+              <div className="modal-section">
+                <h3 className="modal-subtitle">Modernization & Engineering Enhancements</h3>
+                <p className="modal-text">
+                  This showcase demonstrates modern production software practices: vectorized dynamic scoring engine, cold-start handling, offline SBERT fallback, WCAG 2.2 AA accessibility, real-browser QA test harness, Vite migration, and dark developer dashboard styling.
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setShowAboutModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* University Attribution Footer */}
       <footer className="app-footer" role="contentinfo">
         <div className="footer-content">
-          <p className="footer-title">
-            <strong>GitHub Project Partner Recommendation System</strong>
-          </p>
-          <p className="footer-academic">
-            Showcase implementation based on the <strong>CS 5661 Data Science university project</strong> (Cal State LA).
-          </p>
+          <div className="footer-top-row">
+            <div>
+              <p className="footer-title">
+                <strong>GitHub Project Partner Recommendation System</strong>
+              </p>
+              <p className="footer-academic">
+                Showcase implementation based on the <strong>CS 5661 Data Science university project</strong> (Cal State LA).
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-footer-about"
+              onClick={() => setShowAboutModal(true)}
+            >
+              View Contributor Credits
+            </button>
+          </div>
+
           <details className="footer-team-details">
             <summary className="footer-summary">Original University Team Contributors & Roles</summary>
             <ul className="footer-team-list">
@@ -843,7 +1133,7 @@ function App() {
             </ul>
           </details>
           <p className="footer-copyright">
-            Public developer metadata analyzed for educational portfolio matching.
+            Public developer metadata analyzed for educational portfolio matching. Raw candidate bios remain confidential.
           </p>
         </div>
       </footer>
