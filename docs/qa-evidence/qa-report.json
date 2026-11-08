@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-08T09:38:24.820Z",
+  "timestamp": "2026-11-08T10:23:28.029Z",
   "browser": "Google Chrome",
   "theme": "Dark Developer Dashboard",
   "scenarios": [
@@ -87,62 +87,63 @@
         "storedPref": "light",
         "mobileLightOverflow": false,
         "darkThemeAttr": "dark",
-        "systemPref": "system"
+        "systemPref": "system",
+        "theme320Dark": "dark"
       }
     }
   ],
   "axeAudits": [
     {
       "context": "Initial Page State",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Hybrid Results State",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Empty Results State",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Validation Error State",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Semantic Results State",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Network Error State",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "About Modal State",
-      "passesCount": 49,
+      "passesCount": 50,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Desktop Light Homepage",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Desktop Light Hybrid Results",
-      "passesCount": 45,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     }
@@ -159,6 +160,12 @@
       "overflow": false,
       "status": "PASSED",
       "screenshot": "09-mobile-recommendation-cards.png"
+    },
+    {
+      "name": "Compact Mobile (320x568)",
+      "overflow": false,
+      "status": "PASSED",
+      "screenshot": "16-mobile-320px-header.png"
     }
   ],
   "screenshots": [
@@ -170,16 +177,18 @@
     "05-desktop-semantic-results.png",
     "06-network-error.png",
     "07-about-modal.png",
-    "09-mobile-recommendation-cards.png",
     "08-mobile-search-interface.png",
+    "09-mobile-recommendation-cards.png",
+    "16-mobile-320px-header.png",
     "10-tablet-layout.png",
     "12-desktop-light-homepage.png",
     "13-desktop-light-hybrid-results.png",
-    "14-mobile-light-interface.png"
+    "14-mobile-light-interface.png",
+    "15-mobile-light-recommendation-cards.png"
   ],
   "summary": {
-    "totalTests": 11,
-    "passed": 11,
+    "totalTests": 12,
+    "passed": 12,
     "failed": 0,
     "defectsFound": []
   }

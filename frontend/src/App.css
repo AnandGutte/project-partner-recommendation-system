@@ -130,6 +130,11 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
 html, body {
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
@@ -138,6 +143,18 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Ensure anchored sections and target cards have clearance from sticky header */
+.main-content,
+.search-panel,
+.results-container,
+.alert-banner,
+#main-content,
+#panel-hybrid,
+#panel-bio,
+#results-section {
+  scroll-margin-top: 80px;
 }
 
 /* WCAG 2.4.1 Skip Link */
@@ -226,31 +243,77 @@ html, body {
 }
 
 @media (max-width: 640px) {
+  .app-header {
+    padding: 8px 0;
+  }
+
   .header-container,
   .hero-container,
   .main-content,
   .footer-content {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
   .app-header .header-container {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .header-brand {
+    justify-content: flex-start;
     gap: 10px;
+  }
+
+  .brand-logo {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+  }
+
+  .brand-logo svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .brand-name {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .brand-sub {
+    font-size: 10px;
   }
 
   .header-controls {
     width: 100%;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .api-status-badge {
+    padding: 3px 7px;
+    font-size: 11px;
+    gap: 5px;
+    flex-shrink: 0;
   }
 
   .btn-header-link,
   .btn-header-repo {
-    font-size: 12px;
-    padding: 6px 10px;
+    font-size: 11px;
+    padding: 5px 8px;
+    min-height: 32px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .btn-header-repo svg {
+    width: 14px;
+    height: 14px;
   }
 }
 
@@ -388,11 +451,76 @@ html, body {
 }
 
 @media (max-width: 520px) {
-  .theme-btn-text {
+  .status-text-prefix,
+  .repo-arrow,
+  .theme-btn-text,
+  .btn-text-full {
     display: none;
   }
+
+  .api-status-badge {
+    padding: 3px 6px;
+    font-size: 11px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .theme-selector {
+    padding: 2px;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
   .theme-btn {
-    padding: 6px 8px;
+    padding: 4px 6px;
+    min-height: 30px;
+    min-width: 26px;
+  }
+
+  .btn-header-link,
+  .btn-header-repo {
+    padding: 4px 7px;
+    font-size: 11px;
+    min-height: 30px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .header-container,
+  .hero-container,
+  .main-content,
+  .footer-content {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .header-controls {
+    gap: 2px;
+  }
+
+  .api-status-badge {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+
+  .theme-selector {
+    padding: 1px;
+    gap: 1px;
+  }
+
+  .theme-btn {
+    padding: 3px 5px;
+    min-width: 24px;
+    min-height: 28px;
+  }
+
+  .btn-header-link,
+  .btn-header-repo {
+    padding: 3px 5px;
+    font-size: 10.5px;
+    min-height: 28px;
   }
 }
 
@@ -482,19 +610,64 @@ html, body {
 /* Metric Cards Grid */
 .metric-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-@media (min-width: 640px) {
-  .metric-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
 }
 
 @media (min-width: 960px) {
   .metric-grid {
     grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-section {
+    padding: 24px 0 16px;
+  }
+
+  .header-title {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .hero-headline {
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+
+  .header-subtitle {
+    font-size: 13px;
+    margin-bottom: 14px;
+    line-height: 1.4;
+  }
+
+  .metric-card {
+    padding: 10px 12px;
+  }
+
+  .metric-header {
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .metric-icon {
+    font-size: 13px;
+  }
+
+  .metric-label {
+    font-size: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  .metric-value {
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+
+  .metric-desc {
+    font-size: 11px;
+    line-height: 1.3;
   }
 }
 

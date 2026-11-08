@@ -66,6 +66,45 @@ async function runAxe(page, contextName) {
   };
 }
 
+async function captureCleanScreenshot(page, filename, options = {}) {
+  const filePath = path.resolve(evidenceDir, filename);
+  if (options.fullPage) {
+    // Prevent sticky header from obscuring stitched content in fullPage capture
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+      const header = document.querySelector(".app-header");
+      if (header) {
+        header.setAttribute("data-prev-pos", header.style.position || "");
+        header.style.position = "relative";
+      }
+    });
+    await new Promise((r) => setTimeout(r, 120));
+    await page.screenshot({ path: filePath, fullPage: true });
+    await page.evaluate(() => {
+      const header = document.querySelector(".app-header");
+      if (header) {
+        header.style.position = header.getAttribute("data-prev-pos") || "";
+        header.removeAttribute("data-prev-pos");
+      }
+    });
+  } else if (options.scrollToSelector) {
+    // Scroll element cleanly into view with comfortable clearance below the sticky header
+    await page.evaluate((selector) => {
+      const el = document.querySelector(selector);
+      if (el) {
+        const header = document.querySelector(".app-header");
+        const headerHeight = header ? header.offsetHeight + 14 : 90;
+        const targetY = el.getBoundingClientRect().top + window.scrollY - headerHeight;
+        window.scrollTo({ top: Math.max(0, targetY) });
+      }
+    }, options.scrollToSelector);
+    await new Promise((r) => setTimeout(r, 200));
+    await page.screenshot({ path: filePath });
+  } else {
+    await page.screenshot({ path: filePath });
+  }
+}
+
 async function main() {
   console.log("=================================================");
   console.log(" Starting Phase 6 Dark Dashboard Browser QA Run  ");
@@ -127,7 +166,7 @@ async function main() {
     await page.goto("http://localhost:3000", { waitUntil: "networkidle0" });
 
     const screenshotHome = "01-desktop-homepage.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotHome), fullPage: true });
+    await captureCleanScreenshot(page, screenshotHome, { fullPage: true });
     report.screenshots.push(screenshotHome);
 
     const title = await page.title();
@@ -194,7 +233,7 @@ async function main() {
     const loadingEl = await loadingPromise;
     if (loadingEl) {
       const screenshotLoading = "11-loading-state.png";
-      await page.screenshot({ path: path.resolve(evidenceDir, screenshotLoading), fullPage: true });
+      await captureCleanScreenshot(page, screenshotLoading, { fullPage: true });
       report.screenshots.push(screenshotLoading);
     }
 
@@ -207,7 +246,7 @@ async function main() {
     console.log(` -> Retrieved ${hybridCount} candidate cards (${firstUser}). Meters: ${breakdownMeters}, Links: ${profileLinks}`);
 
     const screenshotHybrid = "02-desktop-hybrid-results.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotHybrid), fullPage: true });
+    await captureCleanScreenshot(page, screenshotHybrid, { fullPage: true });
     report.screenshots.push(screenshotHybrid);
 
     report.scenarios.push({
@@ -230,7 +269,7 @@ async function main() {
     const emptyTitle = await page.$eval(".empty-state h3", (el) => el.textContent.trim());
 
     const screenshotEmpty = "03-empty-state.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotEmpty), fullPage: true });
+    await captureCleanScreenshot(page, screenshotEmpty, { fullPage: true });
     report.screenshots.push(screenshotEmpty);
 
     report.scenarios.push({
@@ -253,7 +292,7 @@ async function main() {
     const isInvalid = await page.$eval("#input-username", (el) => el.getAttribute("aria-invalid"));
 
     const screenshotVal = "04-validation-error.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotVal), fullPage: true });
+    await captureCleanScreenshot(page, screenshotVal, { fullPage: true });
     report.screenshots.push(screenshotVal);
 
     report.scenarios.push({
@@ -289,7 +328,7 @@ async function main() {
     console.log(` -> Semantic candidates: ${bioCount}, Engine label: "${engineLabel}", Raw bio leaks: ${rawBioLeaks}`);
 
     const screenshotSemantic = "05-desktop-semantic-results.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotSemantic), fullPage: true });
+    await captureCleanScreenshot(page, screenshotSemantic, { fullPage: true });
     report.screenshots.push(screenshotSemantic);
 
     report.scenarios.push({
@@ -325,7 +364,7 @@ async function main() {
     const errorText = await page.$eval(".alert-error .alert-text", (el) => el.textContent.trim());
 
     const screenshotError = "06-network-error.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotError), fullPage: true });
+    await captureCleanScreenshot(page, screenshotError, { fullPage: true });
     report.screenshots.push(screenshotError);
 
     const axeError = await runAxe(page, "Network Error State");
@@ -355,7 +394,7 @@ async function main() {
       const teamListCount = await page.$$eval(".modal-team-list li", (els) => els.length);
 
       const screenshotModal = "07-about-modal.png";
-      await page.screenshot({ path: path.resolve(evidenceDir, screenshotModal) });
+      await captureCleanScreenshot(page, screenshotModal);
       report.screenshots.push(screenshotModal);
 
       const axeModal = await runAxe(page, "About Modal State");
@@ -373,34 +412,70 @@ async function main() {
       });
     }
 
-    // Scenario I: Responsive Layout Checks (Mobile & Tablet)
+    // Scenario I: Responsive Layout Checks (Mobile 375px, Compact 320px, & Tablet 768px)
     console.log("[Scenario I] Testing Mobile & Tablet Viewports...");
-    // Mobile view (375x667)
+
+    // 1. Mobile Dark view (375x667)
     await page.setViewport({ width: 375, height: 667 });
+    await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise((r) => setTimeout(r, 400));
     const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    const screenshotMobileCards = "09-mobile-recommendation-cards.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotMobileCards), fullPage: true });
-    report.screenshots.push(screenshotMobileCards);
+
+    // Ensure candidate cards are rendered for mobile results capture
+    await page.click("#tab-hybrid");
+    const hybridInputVal = await page.$eval("#input-username", (el) => el.value);
+    if (!hybridInputVal) {
+      await page.type("#input-username", "abhay");
+      const submitMobile = await page.$('button[type="submit"]');
+      await submitMobile.click();
+      await page.waitForSelector(".candidate-card", { timeout: 15000 });
+    }
 
     // Scroll to top for mobile search interface
     await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise((r) => setTimeout(r, 200));
     const screenshotMobileSearch = "08-mobile-search-interface.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotMobileSearch) });
+    await captureCleanScreenshot(page, screenshotMobileSearch);
     report.screenshots.push(screenshotMobileSearch);
 
-    // Tablet (768x1024)
+    // Mobile recommendation cards scrolled cleanly below sticky header
+    const screenshotMobileCards = "09-mobile-recommendation-cards.png";
+    await captureCleanScreenshot(page, screenshotMobileCards, { scrollToSelector: ".results-container" });
+    report.screenshots.push(screenshotMobileCards);
+
+    // 2. Extra Compact Mobile View (320x568 - iPhone SE)
+    await page.setViewport({ width: 320, height: 568 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise((r) => setTimeout(r, 300));
+    const mobile320Overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    const screenshot320 = "16-mobile-320px-header.png";
+    await captureCleanScreenshot(page, screenshot320);
+    report.screenshots.push(screenshot320);
+
+    // Test theme selector responsiveness and click functionality at 320px
+    const themeBtnDark320 = await page.$("#theme-btn-dark");
+    if (themeBtnDark320) await themeBtnDark320.click();
+    await new Promise((r) => setTimeout(r, 100));
+    const theme320Dark = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+
+    // 3. Tablet view (768x1024)
     await page.setViewport({ width: 768, height: 1024 });
+    await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise((r) => setTimeout(r, 400));
     const tabletOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     const screenshotTablet = "10-tablet-layout.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotTablet), fullPage: true });
+    await captureCleanScreenshot(page, screenshotTablet, { fullPage: true });
     report.screenshots.push(screenshotTablet);
+
+    // Test theme selector at 768px
+    const themeBtnSystem768 = await page.$("#theme-btn-system");
+    if (themeBtnSystem768) await themeBtnSystem768.click();
+    await new Promise((r) => setTimeout(r, 100));
 
     report.responsiveChecks.push(
       { name: "Tablet (768x1024)", overflow: tabletOverflow, status: !tabletOverflow ? "PASSED" : "FAILED", screenshot: screenshotTablet },
-      { name: "Mobile (375x667)", overflow: mobileOverflow, status: !mobileOverflow ? "PASSED" : "FAILED", screenshot: screenshotMobileCards }
+      { name: "Mobile (375x667)", overflow: mobileOverflow, status: !mobileOverflow ? "PASSED" : "FAILED", screenshot: screenshotMobileCards },
+      { name: "Compact Mobile (320x568)", overflow: mobile320Overflow, status: !mobile320Overflow ? "PASSED" : "FAILED", screenshot: screenshot320 }
     );
 
     // Scenario J: Theme Support (Light, Dark, System) & Light Theme Verification
@@ -418,7 +493,7 @@ async function main() {
     const storedPref = await page.evaluate(() => localStorage.getItem("partner_theme_pref"));
 
     const screenshotLightHome = "12-desktop-light-homepage.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotLightHome), fullPage: true });
+    await captureCleanScreenshot(page, screenshotLightHome, { fullPage: true });
     report.screenshots.push(screenshotLightHome);
 
     const axeLightHome = await runAxe(page, "Desktop Light Homepage");
@@ -436,24 +511,29 @@ async function main() {
     await page.waitForSelector(".candidate-card", { timeout: 15000 });
 
     const screenshotLightHybrid = "13-desktop-light-hybrid-results.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotLightHybrid), fullPage: true });
+    await captureCleanScreenshot(page, screenshotLightHybrid, { fullPage: true });
     report.screenshots.push(screenshotLightHybrid);
 
     const axeLightHybrid = await runAxe(page, "Desktop Light Hybrid Results");
     report.axeAudits.push(axeLightHybrid);
     console.log(`    Axe Passes (Light Hybrid): ${axeLightHybrid.passesCount}, Violations: ${axeLightHybrid.violationsCount}`);
 
-    // 3. Mobile View in Light Theme
+    // 3. Mobile View in Light Theme (375x667)
     await page.setViewport({ width: 375, height: 667 });
     await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise((r) => setTimeout(r, 300));
     const mobileLightOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 
     const screenshotMobileLight = "14-mobile-light-interface.png";
-    await page.screenshot({ path: path.resolve(evidenceDir, screenshotMobileLight) });
+    await captureCleanScreenshot(page, screenshotMobileLight);
     report.screenshots.push(screenshotMobileLight);
 
-    // 4. Test Dark and System buttons
+    const screenshotMobileLightCards = "15-mobile-light-recommendation-cards.png";
+    await captureCleanScreenshot(page, screenshotMobileLightCards, { scrollToSelector: ".results-container" });
+    report.screenshots.push(screenshotMobileLightCards);
+
+    // 4. Test Dark and System buttons at desktop width
+    await page.setViewport({ width: 1280, height: 800 });
     const darkBtn = await page.$("#theme-btn-dark");
     if (darkBtn) await darkBtn.click();
     await new Promise((r) => setTimeout(r, 150));
@@ -471,10 +551,11 @@ async function main() {
         storedPref === "light" &&
         !mobileLightOverflow &&
         darkThemeAttr === "dark" &&
-        systemPref === "system"
+        systemPref === "system" &&
+        theme320Dark === "dark"
           ? "PASSED"
           : "FAILED",
-      details: { lightThemeAttr, storedPref, mobileLightOverflow, darkThemeAttr, systemPref },
+      details: { lightThemeAttr, storedPref, mobileLightOverflow, darkThemeAttr, systemPref, theme320Dark },
     });
 
     // Summary calculation
