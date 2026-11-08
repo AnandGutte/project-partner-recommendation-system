@@ -79,8 +79,7 @@ function Recommendation() {
         method: clusteringMethod,
       });
       setResults(response.data || []);
-    } catch (err) {
-      console.error("❌ Axios error:", err);
+    } catch {
       setError("⚠️ Failed to fetch partner recommendations.");
     } finally {
       setLoading(false);
@@ -97,8 +96,7 @@ function Recommendation() {
         bio: bio.trim(),
       });
       setBioResults(response.data || []);
-    } catch (err) {
-      console.error("❌ Axios error (bio):", err);
+    } catch {
       setError("⚠️ Failed to fetch bio-based recommendations.");
     } finally {
       setLoading(false);

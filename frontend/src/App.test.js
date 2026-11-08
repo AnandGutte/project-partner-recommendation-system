@@ -13,7 +13,7 @@ describe('GitHub Project Partner Recommendation Component', () => {
       data: {
         total_users: 3890,
         clustering_methods: {
-          hdbscan: { domains: ["DevOps & Scripting", "Testing & Sparse Data", "Unknown Users"] },
+          hdbscan: { domains: ["DevOps & Scripting", "Testing & Sparse Data", "Unknown Users", "Fixture metadata domain"] },
           dbscan: { domains: ["Blockchain & Ripple Projects", "DevOps & Scripting"] },
         },
       },
@@ -30,8 +30,9 @@ describe('GitHub Project Partner Recommendation Component', () => {
     expect(screen.getByPlaceholderText(/Enter Bio to Get Semantic Matches/i)).toBeInTheDocument();
   });
 
-  test('disables action buttons when inputs are empty', () => {
+  test('disables action buttons when inputs are empty', async () => {
     render(<App />);
+    await screen.findByRole('option', { name: 'Fixture metadata domain' });
     const partnerButton = screen.getByRole('button', { name: /Get Partner Matches/i });
     const bioButton = screen.getByRole('button', { name: /Get Bio Matches/i });
 
@@ -39,8 +40,9 @@ describe('GitHub Project Partner Recommendation Component', () => {
     expect(bioButton).toBeDisabled();
   });
 
-  test('enables partner button when username is entered', () => {
+  test('enables partner button when username is entered', async () => {
     render(<App />);
+    await screen.findByRole('option', { name: 'Fixture metadata domain' });
     const usernameInput = screen.getByPlaceholderText(/GitHub Username/i);
     const partnerButton = screen.getByRole('button', { name: /Get Partner Matches/i });
 
@@ -72,6 +74,25 @@ describe('GitHub Project Partner Recommendation Component', () => {
       expect(screen.getByRole('heading', { level: 4, name: /octocat/i })).toBeInTheDocument();
       expect(screen.getByText(/0.88/i)).toBeInTheDocument();
       expect(screen.getAllByText(/DevOps & Scripting/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  test('renders a privacy-filtered bio match without a raw candidate bio', async () => {
+    axios.post.mockResolvedValueOnce({
+      data: [{ Username: 'octocat', Location: null, Profile_URL: null, similarity: 0.81 }],
+    });
+    render(<App />);
+    await screen.findByRole('option', { name: 'Fixture metadata domain' });
+
+    fireEvent.change(screen.getByPlaceholderText(/Enter Bio to Get Semantic Matches/i), {
+      target: { value: 'python' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Get Bio Matches/i }));
+
+    expect(await screen.findByRole('heading', { level: 4, name: 'octocat' })).toBeInTheDocument();
+    expect(screen.getByText(/Similarity: 0.81/i)).toBeInTheDocument();
+    expect(axios.post).toHaveBeenCalledWith(expect.stringMatching(/\/semantic-bio-recommend$/), {
+      bio: 'python',
     });
   });
 

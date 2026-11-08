@@ -9,7 +9,9 @@ Preserves and integrates original team algorithms:
 - Cluster Domain Tagging: DBSCAN and HDBSCAN clustering (Team)
 """
 
+import logging
 from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
@@ -22,8 +24,15 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 
 
+logger = logging.getLogger(__name__)
+
+
+class BioSearchUnavailable(Exception):
+    pass
+
+
 class RecommendationEngine:
-    def __init__(self, data_dir: Optional[Path] = None):
+    def __init__(self, data_dir: Optional[Path] = None, *, model_path: Optional[str] = None):
         self.data_dir = Path(data_dir) if data_dir else DATA_DIR
         self.df: pd.DataFrame = pd.DataFrame()
         self.dbscan_df: pd.DataFrame = pd.DataFrame()
@@ -31,6 +40,9 @@ class RecommendationEngine:
         self.bio_embeddings: Optional[np.ndarray] = None
         self.sbert_model: Any = None
         self.sbert_available: bool = False
+        self.model_path = model_path
+        self._model_attempted = False
+        self._model_lock = Lock()
 
         # Precomputed matrices & index mappings
         self.content_matrix = None
@@ -49,16 +61,29 @@ class RecommendationEngine:
         if not users_csv.exists():
             raise FileNotFoundError(f"Missing core user dataset: {users_csv}")
 
-        raw_df = pd.read_csv(users_csv)
+        raw_df = pd.read_csv(users_csv, dtype={"Username": "string"})
+        if raw_df["Username"].isna().any() or raw_df["Username"].str.strip().eq("").any():
+            raise ValueError("Core dataset contains invalid usernames.")
 
         # Load bio embeddings (Sentence-BERT all-MiniLM-L6-v2)
         npy_path = self.data_dir / "bio_embeddings.npy"
         raw_bio_embeddings = None
-        if npy_path.exists():
-            try:
-                raw_bio_embeddings = np.load(str(npy_path))
-            except Exception:
-                raw_bio_embeddings = None
+        try:
+            loaded = np.load(npy_path, allow_pickle=False)
+            if isinstance(loaded, np.lib.npyio.NpzFile):
+                loaded.close()
+            elif (
+                loaded.ndim == 2
+                and loaded.shape[0] == len(raw_df)
+                and loaded.shape[1] > 0
+                and loaded.dtype in (np.dtype("float32"), np.dtype("float64"))
+                and np.isfinite(loaded).all()
+            ):
+                raw_bio_embeddings = loaded
+            if raw_bio_embeddings is None:
+                logger.warning("Bio embeddings are invalid. Using lexical bio search.")
+        except (OSError, ValueError, EOFError) as error:
+            logger.warning("Bio embeddings unavailable (%s). Using lexical bio search.", type(error).__name__)
 
         # Deduplicate while preserving 1-to-1 index alignment with bio embeddings
         is_unique = ~raw_df.duplicated(subset="Username", keep="first")
@@ -93,30 +118,28 @@ class RecommendationEngine:
             self.hdbscan_df = pd.DataFrame(columns=["Username", "Cluster", "Domain_Tag"])
 
     def _init_sbert_model(self) -> bool:
-        """Load SentenceTransformer if locally cached; fallback immediately if offline."""
-        if self.sbert_available and self.sbert_model is not None:
-            return True
-        try:
-            from sentence_transformers import SentenceTransformer
-            # Try loading from local cache first
+        """Load only a provisioned model or local cache. Try once per worker."""
+        with self._model_lock:
+            if self._model_attempted:
+                return self.sbert_available
+            self._model_attempted = True
             try:
-                self.sbert_model = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
+                if self.model_path and not Path(self.model_path).is_dir():
+                    raise FileNotFoundError("Configured local model directory is unavailable.")
+                from sentence_transformers import SentenceTransformer
+
+                self.sbert_model = SentenceTransformer(
+                    self.model_path or "sentence-transformers/all-MiniLM-L6-v2",
+                    local_files_only=True,
+                    trust_remote_code=False,
+                )
                 self.sbert_available = True
-                return True
-            except Exception:
-                # Fast probe before attempting remote download
-                import socket
-                try:
-                    with socket.create_connection(("huggingface.co", 443), timeout=1.0):
-                        self.sbert_model = SentenceTransformer("all-MiniLM-L6-v2")
-                        self.sbert_available = True
-                        return True
-                except Exception:
-                    self.sbert_available = False
-                    return False
-        except Exception:
-            self.sbert_available = False
-            return False
+            except Exception as error:
+                logger.warning(
+                    "Bio model unavailable (%s). Using lexical search. Provision a local model and restart.",
+                    type(error).__name__,
+                )
+            return self.sbert_available
 
     def _build_similarity_spaces(self) -> None:
         """Vectorize content features and normalize interaction metrics for real-time scoring."""
@@ -333,22 +356,28 @@ class RecommendationEngine:
         scores = np.zeros(n_users)
         used_sbert = False
 
-        if self._init_sbert_model() and self.bio_embeddings is not None:
+        if self.bio_embeddings is not None and self._init_sbert_model():
             try:
                 query_vec = self.sbert_model.encode([query_text], convert_to_numpy=True)
                 q_norm = np.linalg.norm(query_vec)
                 if q_norm > 0:
                     query_vec = query_vec / q_norm
-                scores = np.dot(self.bio_embeddings, query_vec.T).squeeze()
+                if query_vec.shape != (1, self.bio_embeddings.shape[1]) or not np.isfinite(query_vec).all():
+                    raise ValueError("Model and embedding artifact are incompatible.")
+                scores = np.dot(self.bio_embeddings, query_vec[0])
                 used_sbert = True
-            except Exception:
-                used_sbert = False
+            except Exception as error:
+                logger.warning("Bio inference unavailable (%s). Using lexical search.", type(error).__name__)
 
         if not used_sbert:
             # Fallback: TF-IDF on user bios
-            bio_texts = self.df["Bio"].fillna("").tolist()
+            bio_texts = self.df["Bio"].fillna("").tolist() if "Bio" in self.df else []
             bio_vectorizer = TfidfVectorizer(stop_words="english")
-            bio_matrix = bio_vectorizer.fit_transform(bio_texts)
+            try:
+                bio_matrix = bio_vectorizer.fit_transform(bio_texts)
+            except ValueError as error:
+                logger.warning("Lexical bio search unavailable (%s).", type(error).__name__)
+                raise BioSearchUnavailable from None
             query_vec = bio_vectorizer.transform([query_text])
             scores = cosine_similarity(query_vec, bio_matrix)[0]
 

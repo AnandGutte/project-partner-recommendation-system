@@ -1,6 +1,6 @@
 # 🤝 GitHub Project Partner Recommendation System
 
-> 💡 **Showcase Repository:** Personal portfolio mirror and modernization by **Anand Gutte** (based on the CS 5661 Data Science university project).  
+> 💡 **Showcase Repository:** Personal portfolio mirror and modernization by **Anand Gutte** (based on the CS 5661 Data Science university project).\
 > 🔗 **Original Team Repository:** [cs5661-dsproject-Project-Partner-Recommendation-System](https://github.com/EKTAMULKALWAR/cs5661-dsproject-Project-Partner-Recommendation-System.git)
 
 ---
@@ -25,7 +25,7 @@ flowchart TD
 
     subgraph DataLayer ["Aligned Preprocessed Data Layer"]
         Profiles["cleaned_github_users.csv (3,890 unique users)"]
-        Embeddings["bio_embeddings.npy (3,890 × 384 float32 vectors)"]
+        Embeddings["bio_embeddings.npy (4,104 rows before deduplication)"]
         HDBSCAN["hdbscan_optuna_clustered_users_with_domain.csv"]
         DBSCAN["dbscan_optuna_clustered_users_with_domain.csv"]
     end
@@ -94,7 +94,13 @@ pip install -r requirements.txt
 
 ### 2. Start the Backend API
 
-The Flask application supports execution from both the repository root and the backend directory:
+The Flask application supports execution from both the repository root and the backend directory. Cross-origin access is denied by default. Before starting the backend, set `PARTNER_CORS_ORIGINS` to the exact frontend origin if React is served separately.
+
+```powershell
+$env:PARTNER_CORS_ORIGINS = 'http://localhost:3000'
+```
+
+On Bash, use `export PARTNER_CORS_ORIGINS=http://localhost:3000`. The root [.env.example](.env.example) documents values to export in the backend process. The development server defaults to loopback with debug disabled. A local Sentence-BERT snapshot is optional. Without it, bio search uses TF-IDF.
 
 ```bash
 # Option A: From root directory
@@ -123,13 +129,14 @@ The frontend will start at `http://localhost:3000`.
 
 ## 🧪 Automated Testing
 
-Both backend and frontend test suites are fully automated and verified:
+Run the backend and frontend suites independently:
 
 ```bash
-# Run backend pytest suite (15 unit, API integration, and evaluation tests)
-pytest backend/tests -v
+# Install backend test dependencies and run the suite
+python -m pip install -r backend/requirements-dev.txt
+python -m pytest backend/tests -q
 
-# Run frontend Jest component tests (5 component & interaction tests)
+# Run the frontend Jest suite
 cd frontend
 npm test -- --watchAll=false
 ```
@@ -137,6 +144,8 @@ npm test -- --watchAll=false
 ---
 
 ## 📡 API Reference
+
+Legacy recommendation routes return arrays. The corresponding `/api` routes return objects with `count` and `recommendations` plus ranking metadata. Only the `/api` routes accept `top_k`, an integer from 1 to 50. JSON bodies are limited to 16 KiB. Raw candidate bios and echoed bio search text are omitted. See [backend security and API contracts](backend/SECURITY.md) for field limits, error codes, CORS and model setup.
 
 ### `GET /api/health`
 Health check and runtime metadata.
@@ -146,6 +155,7 @@ Health check and runtime metadata.
   "total_users": 3890,
   "clustering_methods": ["hdbscan", "dbscan"],
   "bio_embeddings_loaded": true,
+  "sbert_model_ready": false,
   "engine_mode": "hybrid_vector_scoring"
 }
 ```
@@ -206,7 +216,6 @@ Free-text semantic partner query based on project concepts or developer bios.
 [
   {
     "Username": "unfo",
-    "Bio": "Python, Machine Learning, Data Science",
     "Location": "Remote",
     "Profile_URL": "https://github.com/unfo",
     "similarity": 0.8142
@@ -220,25 +229,25 @@ Free-text semantic partner query based on project concepts or developer bios.
 
 *From the original CS 5661 Data Science university project at Cal State LA:*
 
-- **Ekta Mulkalwar** – Lead Data Engineer & Content-Based Modeling  
+- **Ekta Mulkalwar** – Lead Data Engineer & Content-Based Modeling\
   *Designed scraping pipeline, preprocessing, and content-based recommendation logic.*
-- **Apoorva Durge** – NLP & Feature Extraction  
+- **Apoorva Durge** – NLP & Feature Extraction\
   *Extracted text features from user bios using TF-IDF and Sentence-BERT embeddings.*
-- **Anand Gutte** – Collaborative Filtering Developer  
+- **Anand Gutte** – Collaborative Filtering Developer\
   *Built developer interaction similarity metrics using normalized engagement attributes.*
-- **Mansi Aher** – Data Cleaning Specialist  
+- **Mansi Aher** – Data Cleaning Specialist\
   *Handled missing data, duplicates, and feature sanitation.*
-- **Anvaya Chandrika Gudibanda Sreesha** – Visualization & Geo Insights  
+- **Anvaya Chandrika Gudibanda Sreesha** – Visualization & Geo Insights\
   *Constructed exploratory data visualization and location-based metadata mapping.*
-- **Shalini Nistala** – Evaluation & Metrics  
+- **Shalini Nistala** – Evaluation & Metrics\
   *Formulated theoretical validation metrics: precision, recall, and MAP.*
-- **Shah Drashti Kirtibai** – Encoding & Feature Engineering  
+- **Shah Drashti Kirtibai** – Encoding & Feature Engineering\
   *Vectorized categorical features and handled numerical scaling.*
-- **Neel Jaysukhbhai Khunt** – Repository & Documentation Lead  
+- **Neel Jaysukhbhai Khunt** – Repository & Documentation Lead\
   *Maintained Git version control and core project documentation.*
-- **Movva Jeevan Sidhardha** – Location Processing Support  
+- **Movva Jeevan Sidhardha** – Location Processing Support\
   *Geocoded coordinates using Nominatim / Geopy.*
-- **Sai Kiran Bandapally** – Repo Insights Engineer  
+- **Sai Kiran Bandapally** – Repo Insights Engineer\
   *Parsed GitHub repositories for language diversity.*
 
 ---
