@@ -129,17 +129,7 @@ The frontend will start at `http://localhost:3000`.
 
 ## 🧪 Automated Testing
 
-Run the backend and frontend suites independently:
-
-```bash
-# Install backend test dependencies and run the suite
-python -m pip install -r backend/requirements-dev.txt
-python -m pytest backend/tests -q
-
-# Run the frontend Jest suite
-cd frontend
-npm test -- --watchAll=false
-```
+The [CI workflow](.github/workflows/ci.yml) runs backend tests, frontend tests and the production build, plus dependency audits on pull requests targeting `main` and pushes to `main`. See [CI checks and local reproduction](docs/ci.md) for commands, dependency caching, and audit failure criteria.
 
 ---
 
@@ -261,4 +251,4 @@ Enhancements implemented in this showcase release:
 3. **Reproducible Evaluation Suite:** Implemented `backend/evaluation.py` to benchmark Precision@K, Recall@K, MAP@K, Intra-List Diversity, and Catalog Coverage under a transparent ground truth protocol.
 4. **Resilient API:** Added health check (`/api/health`), dynamic domain metadata discovery (`/api/metadata`), literal location matching (regex-safe), and graceful offline TF-IDF fallback for bio queries.
 5. **Modern, Accessible UI:** Modernized React interface with dynamic domain options, accessible labels, responsive CSS grid, match score badges, and language chips.
-6. **Automated Testing:** 15 automated backend pytest tests and 5 Jest component tests with 100% pass rate.
+6. **Automated Testing:** Backend pytest and frontend Jest suites run in CI alongside the production build and dependency audits.
