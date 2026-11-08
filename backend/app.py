@@ -186,5 +186,19 @@ def api_semantic_bio_recommend():
     return jsonify(result)
 
 
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Endpoint not found"}), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    return jsonify({"error": "Internal server error"}), 500
+
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    import os
+    debug_mode = os.getenv("FLASK_DEBUG", "0").lower() in ("1", "true")
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host=host, port=port, debug=debug_mode)
