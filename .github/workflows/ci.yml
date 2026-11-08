@@ -73,8 +73,8 @@ jobs:
       - name: Install locked frontend dependencies
         id: install
         run: npm ci --no-audit --no-fund
-      - name: Run Jest
-        run: npm test -- --watchAll=false --runInBand
+      - name: Run Vitest
+        run: npm test
       - name: Build React for production
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build

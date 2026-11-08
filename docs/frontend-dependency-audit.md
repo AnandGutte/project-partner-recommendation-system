@@ -1,5 +1,7 @@
 # Frontend dependency audit
 
+This is the historical CRA audit at commit `4d44c3c`. The active frontend uses Vite. See the [frontend guide](../frontend/README.md) for current commands.
+
 Audit snapshot from npm 10 against the public registry. npm counts flagged package names, including parent packages flagged through a vulnerable dependency. Multiple advisories can affect the same package. See the inventory below for every package reported in the baseline or final audit.
 
 ## Validated remediation

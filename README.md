@@ -71,7 +71,7 @@ Evaluated across a benchmark of 50 sample query developers with known tech stack
 
 ### Prerequisites
 - Python 3.10+ (64-bit)
-- Node.js 18+ and npm
+- Node.js 22.22.2+ on the Node 22 line, or a compatible newer LTS release, and npm
 
 ### 1. Clone & Set Up Python Virtual Environment
 
@@ -94,13 +94,7 @@ pip install -r requirements.txt
 
 ### 2. Start the Backend API
 
-The Flask application supports execution from both the repository root and the backend directory. Cross-origin access is denied by default. Before starting the backend, set `PARTNER_CORS_ORIGINS` to the exact frontend origin if React is served separately.
-
-```powershell
-$env:PARTNER_CORS_ORIGINS = 'http://localhost:3000'
-```
-
-On Bash, use `export PARTNER_CORS_ORIGINS=http://localhost:3000`. The root [.env.example](.env.example) documents values to export in the backend process. The development server defaults to loopback with debug disabled. A local Sentence-BERT snapshot is optional. Without it, bio search uses TF-IDF.
+The Flask application supports execution from the repository root or the backend directory. The development server defaults to loopback with debug disabled. A local Sentence-BERT snapshot is optional. Without it, bio search uses TF-IDF. The Vite dev server proxies same-origin requests to Flask, so local proxy use requires no CORS configuration.
 
 ```bash
 # Option A: From root directory
@@ -119,11 +113,11 @@ In a separate terminal:
 
 ```bash
 cd frontend
-npm install
-npm start
+npm ci
+npm run dev
 ```
 
-The frontend will start at `http://localhost:3000`.
+The frontend starts at `http://localhost:3000`. See the [frontend guide](frontend/README.md#production-deployment) for API configuration and production deployment from `frontend/dist/`.
 
 ---
 
@@ -251,4 +245,4 @@ Enhancements implemented in this showcase release:
 3. **Reproducible Evaluation Suite:** Implemented `backend/evaluation.py` to benchmark Precision@K, Recall@K, MAP@K, Intra-List Diversity, and Catalog Coverage under a transparent ground truth protocol.
 4. **Resilient API:** Added health check (`/api/health`), dynamic domain metadata discovery (`/api/metadata`), literal location matching (regex-safe), and graceful offline TF-IDF fallback for bio queries.
 5. **Modern, Accessible UI:** Modernized React interface with dynamic domain options, accessible labels, responsive CSS grid, match score badges, and language chips.
-6. **Automated Testing:** Backend pytest and frontend Jest suites run in CI alongside the production build and dependency audits.
+6. **Automated Testing:** Backend pytest and frontend Vitest suites run in CI alongside the production build and dependency audits.

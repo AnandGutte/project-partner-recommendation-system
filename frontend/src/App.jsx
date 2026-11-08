@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const DEFAULT_DOMAINS = {
   hdbscan: ["DevOps & Scripting", "Testing & Sparse Data", "Unknown Users"],
