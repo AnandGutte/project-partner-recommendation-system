@@ -3,18 +3,21 @@
 import os
 import re
 from pathlib import Path
-from threading import Lock
 from urllib.parse import urlsplit
 
-import numpy as np
-import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest, HTTPException, UnsupportedMediaType
 
+if __package__:
+    from .engine import BioSearchUnavailable, RecommendationEngine
+else:
+    from engine import BioSearchUnavailable, RecommendationEngine
+
 BASE_DIR = Path(__file__).resolve().parent
 METHODS = ("dbscan", "hdbscan")
-PARTNER_FIELDS = ["Username", "Location", "Profile_URL", "Domain_Tag", "hybrid_score"]
+PARTNER_FIELDS = ("Username", "Location", "Profile_URL", "Domain_Tag", "hybrid_score", "Languages", "explanation")
+SCORE_FIELDS = ("content_score", "collab_score", "bio_score")
 BIO_FIELDS = ["Username", "Location", "Profile_URL", "similarity"]
 PROFILE_URL = re.compile(r"https://github\.com/[A-Za-z0-9-]+/?")
 BODY_LIMIT = 16 * 1024
@@ -83,61 +86,24 @@ def cors_origins(raw_origins):
     return origins
 
 
-def load_artifact(app, path, loader):
-    try:
-        return loader(path)
-    except (OSError, ValueError, EOFError, KeyError) as error:
-        app.logger.error(
-            "Recommendation artifact %s unavailable (%s). Check PARTNER_DATA_DIR and artifact format.",
-            path.name,
-            type(error).__name__,
-        )
-        return None
+def read_top_k(payload):
+    value = payload.get("top_k", 5)
+    if type(value) is not int or not 1 <= value <= 50:
+        raise APIError(400, "invalid_request", "top_k must be an integer from 1 to 50.")
+    return value
 
 
-def read_partner_scores(path):
-    fields = ["Username", "Location", "Profile_URL"]
-    profiles = pd.read_csv(path, usecols=[*fields, "hybrid_score"], dtype=dict.fromkeys(fields, "string"))
-    profiles["hybrid_score"] = pd.to_numeric(profiles["hybrid_score"])
-    if not np.isfinite(profiles["hybrid_score"]).all():
-        raise ValueError("Invalid partner scores.")
-    return profiles
-
-
-def read_embeddings(path):
-    embeddings = np.load(path, allow_pickle=False)
-    if (
-        not isinstance(embeddings, np.ndarray)
-        or embeddings.ndim != 2
-        or embeddings.shape[1] == 0
-        or embeddings.dtype not in (np.dtype("float32"), np.dtype("float64"))
-        or not np.isfinite(embeddings).all()
-    ):
-        if isinstance(embeddings, np.lib.npyio.NpzFile):
-            embeddings.close()
-        raise ValueError("Invalid bio embedding matrix.")
-    return embeddings.astype(np.float32, copy=False)
-
-
-def load_model(model_path):
-    from sentence_transformers import SentenceTransformer
-
-    if model_path and not Path(model_path).is_dir():
-        raise FileNotFoundError("Configured model directory does not exist.")
-    return SentenceTransformer(
-        model_path or "sentence-transformers/all-MiniLM-L6-v2",
-        local_files_only=True,
-        trust_remote_code=False,
-    )
-
-
-def records(frame, fields):
-    result = frame[fields].astype(object)
-    result = result.where(result.notna(), None)
-    result["Profile_URL"] = result["Profile_URL"].map(
-        lambda value: value if isinstance(value, str) and PROFILE_URL.fullmatch(value) else None
-    )
-    return result.to_dict(orient="records")
+def public_records(result, fields):
+    records = []
+    for candidate in result["recommendations"]:
+        row = {field: candidate[field] for field in fields}
+        url = row["Profile_URL"]
+        row["Profile_URL"] = url if isinstance(url, str) and PROFILE_URL.fullmatch(url) else None
+        for field in ("Location", "Domain_Tag"):
+            if row.get(field) in ("nan", "<NA>", ""):
+                row[field] = None
+        records.append(row)
+    return records
 
 
 def create_app():
@@ -147,39 +113,29 @@ def create_app():
     if origins:
         CORS(
             app,
-            resources={r"^/(?:recommend|semantic-bio-recommend)$": {"origins": origins}},
-            methods=["POST"],
+            resources={
+                r"^/api/(?:health|metadata)$": {"methods": ["GET"]},
+                r"^/(?:api/)?(?:recommend|semantic-bio-recommend)$": {"methods": ["POST"]},
+            },
+            origins=origins,
             allow_headers=["Content-Type"],
             supports_credentials=False,
         )
 
     data_dir = Path(os.environ.get("PARTNER_DATA_DIR") or BASE_DIR / "data")
-    model_path = os.environ.get("PARTNER_MODEL_PATH")
-    hybrid = load_artifact(app, data_dir / "final_hybrid_with_semantic.csv", read_partner_scores)
-    partner_data = {}
-    if hybrid is not None:
-        for method in METHODS:
-            clusters = load_artifact(
-                app,
-                data_dir / f"{method}_optuna_clustered_users_with_domain.csv",
-                lambda path: pd.read_csv(path, usecols=["Username", "Domain_Tag"], dtype="string"),
-            )
-            if clusters is not None:
-                partner_data[method] = hybrid.merge(clusters, on="Username", how="left")
+    engine = None
+    try:
+        engine = RecommendationEngine(data_dir=data_dir, model_path=os.environ.get("PARTNER_MODEL_PATH"))
+    except (OSError, ValueError, KeyError) as error:
+        app.logger.error(
+            "Recommendation data unavailable (%s). Check PARTNER_DATA_DIR and artifact schemas.",
+            type(error).__name__,
+        )
 
-    profiles = load_artifact(
-        app,
-        data_dir / "with_bio_embeddings.csv",
-        lambda path: pd.read_csv(path, usecols=["Username", "Location", "Profile_URL"], dtype="string"),
-    )
-    embeddings = load_artifact(app, data_dir / "bio_embeddings.npy", read_embeddings)
-    if profiles is not None and embeddings is not None and len(profiles) != len(embeddings):
-        app.logger.error("Bio profile and embedding row counts differ. Check PARTNER_DATA_DIR.")
-        embeddings = None
-
-    model = None
-    model_attempted = False
-    model_lock = Lock()
+    def require_engine():
+        if engine is None:
+            raise APIError(503, "recommendation_unavailable", "Recommendation data is unavailable.")
+        return engine
 
     @app.errorhandler(APIError)
     def handle_api_error(error):
@@ -211,66 +167,91 @@ def create_app():
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
-    @app.post("/recommend")
-    def recommend():
+    @app.get("/api/health")
+    def health():
+        service = require_engine()
+        meta = service.get_metadata()
+        return jsonify(
+            status="healthy",
+            total_users=meta["total_users"],
+            clustering_methods=list(meta["clustering_methods"]),
+            bio_embeddings_loaded=service.bio_embeddings is not None,
+            sbert_model_ready=service.sbert_available,
+            engine_mode="hybrid_vector_scoring",
+        )
+
+    @app.get("/api/metadata")
+    def metadata():
+        meta = require_engine().get_metadata()
+        return jsonify(
+            total_users=meta["total_users"],
+            clustering_methods={
+                method: {field: meta["clustering_methods"][method][field] for field in ("label", "domains")}
+                for method in METHODS
+            },
+            sample_usernames=meta["sample_usernames"],
+        )
+
+    def partner_response(rich):
         payload = read_payload()
         username = read_text(payload, "username", 39, required=True)
         location = read_text(payload, "location", 120)
         domain = read_text(payload, "domain", 120)
-        method = read_text(payload, "method", 16, default="hdbscan")
+        method = read_text(payload, "method", 16, default="hdbscan").lower()
         if method not in METHODS:
             raise APIError(400, "invalid_request", "method must be dbscan or hdbscan.")
-        candidates = partner_data.get(method)
-        if candidates is None:
-            raise APIError(503, "recommendation_unavailable", "Partner recommendations are unavailable.")
+        top_k = read_top_k(payload) if rich else 5
+        result = require_engine().recommend_hybrid(
+            username=username,
+            location=None if location == "All" else location,
+            domain=domain,
+            method=method,
+            top_k=top_k,
+        )
+        recommendations = public_records(result, PARTNER_FIELDS + SCORE_FIELDS if rich else PARTNER_FIELDS)
+        if not rich:
+            return jsonify(recommendations)
+        return jsonify(
+            query_user=result["query_user"],
+            is_known_user=result["is_known_user"],
+            method=result["method"],
+            count=len(recommendations),
+            recommendations=recommendations,
+        )
 
-        results = candidates[candidates["Username"].str.casefold() != username.casefold()]
-        if location:
-            results = results[results["Location"].str.contains(location, case=False, na=False, regex=False)]
-        if domain:
-            results = results[results["Domain_Tag"] == domain]
-        results = results.drop_duplicates(subset="Username")
-        results = results.sort_values("hybrid_score", ascending=False).head(5)
-        return jsonify(records(results, PARTNER_FIELDS))
+    @app.post("/recommend")
+    def recommend():
+        return partner_response(rich=False)
+
+    @app.post("/api/recommend")
+    def api_recommend():
+        return partner_response(rich=True)
+
+    def bio_response(rich):
+        payload = read_payload()
+        bio = read_text(payload, "bio", 1000, required=True)
+        top_k = read_top_k(payload) if rich else 5
+        try:
+            result = require_engine().recommend_by_bio(bio_query=bio, top_k=top_k)
+        except BioSearchUnavailable:
+            raise APIError(503, "recommendation_unavailable", "Bio recommendations are unavailable.") from None
+        recommendations = public_records(result, BIO_FIELDS)
+        if not rich:
+            return jsonify(recommendations)
+        return jsonify(engine=result["engine"], count=len(recommendations), recommendations=recommendations)
 
     @app.post("/semantic-bio-recommend")
     def semantic_bio_recommend():
-        nonlocal model, model_attempted
-        bio = read_text(read_payload(), "bio", 2000, required=True)
-        if profiles is None or embeddings is None:
-            raise APIError(503, "recommendation_unavailable", "Bio recommendations are unavailable.")
-        if profiles.empty:
-            return jsonify([])
+        return bio_response(rich=False)
 
-        with model_lock:
-            if not model_attempted:
-                try:
-                    model = load_model(model_path)
-                except Exception as error:
-                    app.logger.error(
-                        "Bio model unavailable (%s). Provision the local model and restart the worker.",
-                        type(error).__name__,
-                    )
-                model_attempted = True
-        if model is None:
-            raise APIError(503, "recommendation_unavailable", "Bio recommendations are unavailable.")
-
-        import torch
-        from sentence_transformers import util
-
-        query = model.encode([bio], convert_to_tensor=True).detach().cpu().float()
-        if query.shape != (1, embeddings.shape[1]):
-            app.logger.error("Bio model dimension differs from the embedding artifact.")
-            raise APIError(503, "recommendation_unavailable", "Bio recommendations are unavailable.")
-        scores = util.pytorch_cos_sim(query, torch.from_numpy(embeddings))[0]
-        # Keep the legacy ranking slice for compatibility.
-        top = scores.argsort(descending=True)[1:6]
-        results = profiles.iloc[top.numpy()].copy()
-        results["similarity"] = scores[top].numpy().round(4)
-        return jsonify(records(results, BIO_FIELDS))
+    @app.post("/api/semantic-bio-recommend")
+    def api_semantic_bio_recommend():
+        return bio_response(rich=True)
 
     return app
 
 
+app = create_app()
+
 if __name__ == "__main__":
-    create_app().run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "5000")), debug=False)

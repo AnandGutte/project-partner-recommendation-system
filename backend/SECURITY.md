@@ -20,16 +20,20 @@ Set the origin to the exact React browser origin, including the scheme and port.
 | `PARTNER_DATA_DIR` | Optional operator-controlled artifact directory. Defaults to `backend/data` resolved from the source file. Prefer an absolute path when overriding. |
 | `PARTNER_MODEL_PATH` | Optional operator-controlled local SentenceTransformer directory. If unset, the worker checks its local cache for `sentence-transformers/all-MiniLM-L6-v2`. Provision a trusted snapshot compatible with the embedding artifact. |
 
-The backend loads fixed artifact filenames at worker initialization. An absent or malformed artifact is logged by filename and exception type. The affected route or clustering method returns 503 while available methods continue to serve. Bio search loads the model on its first valid request and never downloads model files during serving. A failed model load returns 503 until the worker restarts. Provision the model and restart after correcting an artifact or configuration problem. The model and data paths are deployment configuration and never come from request fields.
+The backend initializes the engine from fixed artifact filenames. If required artifacts cannot initialize, the API returns 503 and logs the failure type. A missing cluster file falls back to the engine's General domain. Bio search attempts to load a local model once per worker, only when usable embeddings are present. Missing embeddings, a missing model or failed inference uses TF-IDF. If neither search path can operate, the bio route returns 503. Provision corrected artifacts and restart the worker. Request fields cannot select paths.
+
+The environment example is a reference for values to export. `HOST` and `PORT` configure direct script execution. `GET /api/health` reports core engine health, embedding availability and whether a local model was loaded. A successful health response can precede lazy model initialization.
 
 ## React and API contracts
 
-Both existing POST routes return arrays on success. No-match searches return `[]`. Send `application/json` and a JSON object. Unknown properties are ignored. Text fields are trimmed after length validation.
+Legacy POST routes return arrays on success. Their `/api` counterparts return a structured object with `count` and `recommendations`, plus query identity and method for partner search or the ranking engine name for bio search. No-match searches return `[]`. Send `application/json` and a JSON object. Unknown properties are ignored. Text fields are trimmed after length validation.
 
 | Route | Inputs | Success fields |
 |---|---|---|
-| `/recommend` | Required nonblank `username` (39 characters max). Optional string `location` and `domain` (120 each). Optional `method` of `dbscan` or `hdbscan`, default `hdbscan`. Use an empty string or omit unused filters. | `Username`, `Location`, `Profile_URL`, `Domain_Tag`, `hybrid_score`. Self-exclusion ignores username case. Location is a literal case-insensitive substring. |
-| `/semantic-bio-recommend` | Required nonblank `bio` (2,000 characters max). | `Username`, `Location`, `Profile_URL`, `similarity`. Raw candidate `Bio` was removed. The checked-in React client does not use it. |
+| `/recommend` | Required nonblank `username` (39 characters max). Optional string `location` and `domain` (120 each). Optional `method` of `dbscan` or `hdbscan`, default `hdbscan`. Use an empty string or omit unused filters. | `Username`, `Location`, `Profile_URL`, `Domain_Tag`, `hybrid_score`, `Languages`, `explanation`. The rich route adds the three component scores. Self-exclusion ignores username case. Location is a literal case-insensitive substring. |
+| `/semantic-bio-recommend` | Required nonblank `bio` (1,000 characters max). | `Username`, `Location`, `Profile_URL`, `similarity`. Raw candidate `Bio`, display names and echoed bio queries are excluded. React renders the result card without a candidate bio quote. |
+
+Rich routes accept an optional integer `top_k` from 1 to 50, default 5. Legacy routes use five results. `GET /api/metadata` returns clustering methods and domains, total users and the existing sample usernames.
 
 Missing optional response values and invalid profile links are JSON null. The existing React client already guards these optional display fields. Keep its current generic error handling or use the API's safe message. Errors have a stable object shape with a human-readable `error` and machine-readable `code`. The API uses 400 for malformed or invalid JSON, 413 for bodies over 16 KiB, 415 for non-JSON media types, 503 for unavailable resources, and 500 for unexpected failures. CORS is a browser control. The API still has no authentication, rate limiter or service-wide concurrency policy.
 
@@ -41,7 +45,7 @@ Before public hosting, decide the approved audience and data-use scope. Prefer a
 
 ## Modernized engine integration
 
-Keep payload validation, exact origin rules, safe error handling and explicit response allowlists at the HTTP boundary when swapping engines. Reuse these controls for new routes and validate any new `top_k` field with a small positive upper bound. Preserve the legacy list envelopes, allowed clustering methods and null handling. Exclude raw bios, names, coordinates and unnecessary profile fields from rich responses. Apply literal location filtering in the engine as well. Treat optional model readiness separately from dataset readiness, and keep model downloads outside serving. The baseline's recommendation weights, duplicate handling and semantic ranking slice were retained for compatibility. Ranking changes and stronger identity alignment should be evaluated separately.
+Keep payload validation, exact origin rules, safe error handling and explicit response allowlists at the HTTP boundary when swapping engines. Reuse these controls for new routes and validate any new `top_k` field with a small positive upper bound. Preserve the legacy list envelopes, allowed clustering methods and null handling. Exclude raw bios, names, coordinates and unnecessary profile fields from rich responses. Apply literal location filtering in the engine as well. Treat optional model readiness separately from dataset readiness, and keep model downloads outside serving. The integrated implementation retains the incoming personalized weights, cold-start policy, literal location filter and TF-IDF fallback. Stronger artifact identity alignment and ranking quality should be evaluated separately.
 
 ## Tests
 
@@ -53,5 +57,3 @@ python -m pytest -q -p no:cacheprovider backend/tests
 Tests use temporary synthetic CSV/NPY fixtures, a stub encoder for the semantic success path and Flask's test client. They require neither credentials nor network access. Real model inference and deployment load limits require separate integration checks.
 
 References: [Flask configuration](https://flask.palletsprojects.com/en/stable/config/) · [Flask error handling](https://flask.palletsprojects.com/en/stable/errorhandling/) · [SentenceTransformer loading options](https://sbert.net/docs/package_reference/sentence_transformer/model.html)
-
-Implementation verification used the existing Python 3.10 environment with offline model flags. The pytest command above passed 56 tests with zero failures. Both Python sources compiled, and test-client requests with the checked-in DBSCAN and HDBSCAN artifacts each returned HTTP 200 with five results. Real Sentence-BERT inference and production throughput were outside these checks.
