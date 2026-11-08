@@ -51,7 +51,7 @@ jobs:
           "$audit_python" -m pip_audit --strict --progress-spinner=off --vulnerability-service=osv --path "$site_packages"
 
   frontend:
-    name: Frontend tests, build and audit
+    name: Frontend lint, tests, build and audit
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -73,7 +73,10 @@ jobs:
       - name: Install locked frontend dependencies
         id: install
         run: npm ci --no-audit --no-fund
+      - name: Run ESLint
+        run: npm run lint
       - name: Run Vitest
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm test
       - name: Build React for production
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

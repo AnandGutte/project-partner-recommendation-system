@@ -123,7 +123,7 @@ The frontend starts at `http://localhost:3000`. See the [frontend guide](fronten
 
 ## 🧪 Automated Testing
 
-The [CI workflow](.github/workflows/ci.yml) runs backend tests, frontend tests and the production build, plus dependency audits on pull requests targeting `main` and pushes to `main`. See [CI checks and local reproduction](docs/ci.md) for commands, dependency caching, and audit failure criteria.
+The [CI workflow](.github/workflows/ci.yml) runs backend tests, frontend lint and tests, and the production build, plus dependency audits on pull requests targeting `main` and pushes to `main`. See [CI checks and local reproduction](docs/ci.md) for commands, dependency caching, and audit failure criteria.
 
 ---
 
@@ -245,4 +245,4 @@ Enhancements implemented in this showcase release:
 3. **Reproducible Evaluation Suite:** Implemented `backend/evaluation.py` to benchmark Precision@K, Recall@K, MAP@K, Intra-List Diversity, and Catalog Coverage under a transparent ground truth protocol.
 4. **Resilient API:** Added health check (`/api/health`), dynamic domain metadata discovery (`/api/metadata`), literal location matching (regex-safe), and graceful offline TF-IDF fallback for bio queries.
 5. **Modern, Accessible UI:** Modernized React interface with dynamic domain options, accessible labels, responsive CSS grid, match score badges, and language chips.
-6. **Automated Testing:** Backend pytest and frontend Vitest suites run in CI alongside the production build and dependency audits.
+6. **Automated Testing:** Backend pytest, frontend ESLint and Vitest, the production build, and dependency audits run in CI.
