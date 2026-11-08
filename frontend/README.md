@@ -41,6 +41,7 @@ Use Node 22.22.2 or a compatible newer LTS release. Start Flask from the reposit
 ```bash
 npm ci
 npm run dev
+npm run lint
 npm test
 npm run build
 npm audit --audit-level=high
@@ -49,6 +50,8 @@ npm audit --audit-level=high
 Vite serves the app at [http://localhost:3000](http://localhost:3000). `npm start` remains an alias. By default the browser uses same-origin requests and Vite proxies `/api/*`, `/recommend`, and `/semantic-bio-recommend` to Flask at `http://127.0.0.1:5000`. Set `FLASK_PROXY_TARGET` to point the local dev and preview proxies at another backend. This value stays in the Vite process.
 
 For a separately hosted API, set `VITE_API_URL` in `frontend/.env.local` or the build environment to its public HTTP(S) URL. The older `REACT_APP_API_URL` is accepted as a fallback. Flask must allow the exact frontend origin for direct cross-origin requests. The API URL is embedded in the bundle, so use a public URL without credentials. Other environment variables are not exposed by the Vite config.
+
+`npm run lint` runs the ESLint flat configuration, including JavaScript, React, and React Hooks rules. The command fails on errors and warnings.
 
 `npm test` runs the Vitest suite once. Use `npm run test:watch` for interactive development.
 

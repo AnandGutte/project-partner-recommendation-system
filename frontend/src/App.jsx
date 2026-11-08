@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import "./App.css";
 
@@ -55,7 +55,7 @@ function App() {
               // Graceful fallback to verified constants if endpoint is unreachable
             });
         }
-      } catch (e) {
+      } catch {
         // Fallback
       }
     }
