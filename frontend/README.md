@@ -1,70 +1,79 @@
-# Getting Started with Create React App
+# ⚛️ Frontend — GitHub Project Partner Recommendation System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Modernized, responsive, and accessible React client for discovering technical project collaborators based on GitHub public metadata, interaction metrics, and bio semantics.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 🚀 Key Features (Phase 2 Modernization)
+
+1. **Dual Search Strategies (Tabbed Navigation):**
+   - **Hybrid Partner Match:** Query candidate partners against any GitHub username, with filters for preferred location, clustering algorithm (`HDBSCAN` or `DBSCAN`), domain specialization, and top-k selection.
+   - **Semantic Concept Search:** Free-text query matching project ideas and technical stacks directly in the Sentence-BERT vector space.
+2. **Contextual Score & Metric Explanations:**
+   - Displays **Portfolio Match Score** with explicit disclaimers: calculated via heuristic feature similarity across languages (45%), activity metrics (35%), and bio embeddings (20%). Clearly noted as portfolio similarity rather than a validated compatibility guarantee.
+   - Shows component score chips (`Content`, `Activity`, `Bio`) when provided by the API.
+3. **Privacy & Security Alignment:**
+   - Respects backend security allowlists. Candidate raw bios are never displayed in client views.
+   - All profile URLs are strictly verified against `https://github.com/[username]` format and open securely with `target="_blank" rel="noopener noreferrer"`.
+4. **State Machine & User Feedback:**
+   - **Loading State:** Accessible spinner with `aria-live="polite"` feedback.
+   - **Empty Results State:** Actionable suggestions and one-click "Reset Filters" when candidate filters yield 0 matches.
+   - **Validation Error State:** Inline client-side validation (e.g., username length $\le 39$, required fields).
+   - **Network Error State:** Dismissible error banner distinguishing server validation errors from connection outages.
+   - **Success State:** Dynamic count summary, domain chips, and smooth keyboard focus transfer to results.
+5. **Accessibility (WCAG 2.2 AA Compliance):**
+   - **WCAG 2.4.1:** Skip link to `#main-content`.
+   - **WCAG 2.4.7:** Visible 2px focus rings (`:focus-visible`) for all interactive elements.
+   - **WCAG 1.3.1 & 3.3.2:** Explicit `<label htmlFor="...">` bindings for every form input.
+   - **WCAG 1.4.3:** Color contrast ratios $\ge 4.5:1$ for all text against backgrounds.
+   - **WCAG 4.1.2 & 4.1.3:** ARIA landmarks, roles (`tablist`, `tab`, `alert`, `status`), and live regions.
+6. **Mobile-First Responsive Layout:**
+   - CSS Grid with auto-fit/auto-fill candidate cards (`repeat(auto-fill, minmax(360px, 1fr))`).
+   - Touch targets $\ge 44 \times 44\text{px}$ on touch devices.
+   - Stacked form layout on screens $< 640\text{px}$.
+
+---
+
+## 🛠️ Environment Configuration
+
+Create a `.env` file in this directory (or use `.env.example`):
+
+```bash
+# URL of the Flask Backend API (defaults to http://127.0.0.1:5000)
+REACT_APP_API_URL=http://127.0.0.1:5000
+```
+
+---
+
+## 🧪 Available Scripts
 
 ### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
 
 ### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Runs the automated React Testing Library test suite:
+```bash
+npm test -- --watchAll=false
+```
 
 ### `npm run build`
+Compiles an optimized, minified production build into the `build/` folder.
+```bash
+npm run build
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 👥 University Attribution & Contributor Acknowledgements
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This showcase implementation is based on the **CS 5661 Data Science Class Project** at California State University, Los Angeles:
+- **Lead Data Engineer & Content-Based Modeling:** Ekta Mulkalwar
+- **NLP & Feature Extraction:** Apoorva Durge
+- **Collaborative Filtering Developer:** Anand Gutte
+- **Data Cleaning Specialist:** Mansi Aher
+- **Visualization & Geo Insights:** Anvaya Chandrika Gudibanda Sreesha
+- **Evaluation & Metrics:** Shalini Nistala
+- **Encoding & Feature Engineering:** Shah Drashti Kirtibai
+- **Repository & Documentation Lead:** Neel Jaysukhbhai Khunt
+- **Location Processing Support:** Movva Jeevan Sidhardha
+- **Repo Insights Engineer:** Sai Kiran Bandapally
