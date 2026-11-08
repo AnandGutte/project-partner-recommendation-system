@@ -1,0 +1,169 @@
+{
+  "timestamp": "2026-11-08T08:22:00.341Z",
+  "browser": "Google Chrome",
+  "scenarios": [
+    {
+      "name": "Initial Load & Metadata",
+      "status": "PASSED",
+      "details": {
+        "title": "GitHub Project Partner Recommendation System",
+        "heading": "🤝 GitHub Project Partner Recommendation",
+        "statsCount": 3
+      }
+    },
+    {
+      "name": "Skip Link Focus",
+      "status": "PASSED",
+      "details": {
+        "activeEl": {
+          "tagName": "A",
+          "className": "skip-link",
+          "text": "Skip to main search content",
+          "href": "#main-content"
+        },
+        "skipLinkVisible": true
+      }
+    },
+    {
+      "name": "Tablist Keyboard Navigation (Arrow Keys)",
+      "status": "PASSED",
+      "details": {
+        "activeTabAfterRight": {
+          "id": "tab-bio",
+          "ariaSelected": "true"
+        },
+        "activeTabAfterLeft": {
+          "id": "tab-hybrid",
+          "ariaSelected": "true"
+        }
+      }
+    },
+    {
+      "name": "Sample Profile Quick-Pick",
+      "status": "PASSED",
+      "details": {
+        "userVal": "abhay"
+      }
+    },
+    {
+      "name": "Hybrid Partner Search",
+      "status": "PASSED",
+      "details": {
+        "cardCount": 5,
+        "firstCardUser": "@raymorgan",
+        "scoreChips": 5,
+        "profileLinks": 5
+      }
+    },
+    {
+      "name": "Empty Results State",
+      "status": "PASSED",
+      "details": {
+        "emptyTitle": "No Matching Developer Profiles Found"
+      }
+    },
+    {
+      "name": "Reset Form Functionality",
+      "status": "PASSED",
+      "details": {
+        "clearedUser": "",
+        "clearedLoc": "",
+        "hasResults": false
+      }
+    },
+    {
+      "name": "Client-side Validation Error",
+      "status": "PASSED",
+      "details": {
+        "valMsg": "GitHub username is required."
+      }
+    },
+    {
+      "name": "Semantic Concept Search",
+      "status": "PASSED",
+      "details": {
+        "bioCardCount": 5,
+        "bioScoreChips": 5,
+        "rawBioLeaks": false
+      }
+    },
+    {
+      "name": "Server Error Handling & Dismissal",
+      "status": "PASSED",
+      "details": {
+        "errorText": "Request Failed: Simulated Backend Cluster Failure (QA Test)",
+        "dismissed": true
+      }
+    }
+  ],
+  "axeAudits": [
+    {
+      "context": "Initial Page State",
+      "passesCount": 43,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Hybrid Results State",
+      "passesCount": 44,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Empty Results State",
+      "passesCount": 44,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Validation State",
+      "passesCount": 44,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Semantic Results State",
+      "passesCount": 44,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Network Error State",
+      "passesCount": 44,
+      "violationsCount": 0,
+      "violations": []
+    }
+  ],
+  "responsiveChecks": [
+    {
+      "name": "Mobile",
+      "width": 375,
+      "height": 667,
+      "horizontalOverflow": false,
+      "status": "PASSED",
+      "screenshot": "06-responsive-mobile-375x667.png"
+    },
+    {
+      "name": "Tablet",
+      "width": 768,
+      "height": 1024,
+      "horizontalOverflow": false,
+      "status": "PASSED",
+      "screenshot": "06-responsive-tablet-768x1024.png"
+    },
+    {
+      "name": "Desktop",
+      "width": 1280,
+      "height": 800,
+      "horizontalOverflow": false,
+      "status": "PASSED",
+      "screenshot": "06-responsive-desktop-1280x800.png"
+    }
+  ],
+  "summary": {
+    "totalTests": 13,
+    "passed": 13,
+    "failed": 0,
+    "defectsFound": []
+  }
+}

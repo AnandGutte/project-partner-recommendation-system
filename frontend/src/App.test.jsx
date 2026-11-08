@@ -67,11 +67,38 @@ describe("GitHub Project Partner Recommendation Component (Phase 2)", () => {
     await renderComponent();
 
     const submitBtn = screen.getByRole("button", { name: /Find Project Partners/i });
-    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toBeEnabled();
 
+    // Click submit with empty input
+    fireEvent.click(submitBtn);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/GitHub username is required/i);
     const usernameInput = screen.getByLabelText(/GitHub Username/i);
-    fireEvent.change(usernameInput, { target: { value: "   " } });
-    expect(submitBtn).toBeDisabled();
+    expect(usernameInput).toHaveAttribute("aria-invalid", "true");
+    expect(usernameInput).toHaveAttribute("aria-describedby", expect.stringContaining("validation-error-msg"));
+  });
+
+  test("supports keyboard arrow navigation across search tabs (WAI-ARIA tablist)", async () => {
+    await renderComponent();
+
+    const hybridTab = screen.getByRole("tab", { name: /Hybrid Partner Match/i });
+    const bioTab = screen.getByRole("tab", { name: /Semantic Concept Search/i });
+
+    expect(hybridTab).toHaveAttribute("aria-selected", "true");
+    expect(hybridTab).toHaveAttribute("tabindex", "0");
+    expect(bioTab).toHaveAttribute("tabindex", "-1");
+
+    // ArrowRight switches to Bio tab
+    fireEvent.keyDown(hybridTab, { key: "ArrowRight" });
+    expect(bioTab).toHaveAttribute("aria-selected", "true");
+    expect(bioTab).toHaveAttribute("tabindex", "0");
+    expect(hybridTab).toHaveAttribute("tabindex", "-1");
+
+    // ArrowLeft switches back to Hybrid tab
+    fireEvent.keyDown(bioTab, { key: "ArrowLeft" });
+    expect(hybridTab).toHaveAttribute("aria-selected", "true");
+    expect(hybridTab).toHaveAttribute("tabindex", "0");
   });
 
   test("switches between search tabs (Hybrid Match vs Semantic Concept)", async () => {
@@ -143,8 +170,8 @@ describe("GitHub Project Partner Recommendation Component (Phase 2)", () => {
     // Score disclaimer (Requirement 4)
     expect(screen.getByText(/About Recommendation Scores:/i)).toBeInTheDocument();
 
-    // Secure GitHub Profile Link (Requirement 3 & 7)
-    const githubLink = screen.getByRole("link", { name: /View raymorgan's GitHub profile in new tab/i });
+    // Secure GitHub Profile Link (Requirement 3 & 7) - WCAG 2.5.3 compliant visible label
+    const githubLink = screen.getByRole("link", { name: /View GitHub Profile.*@raymorgan/i });
     expect(githubLink).toHaveAttribute("href", "https://github.com/raymorgan");
     expect(githubLink).toHaveAttribute("target", "_blank");
     expect(githubLink).toHaveAttribute("rel", "noopener noreferrer");
@@ -236,6 +263,25 @@ describe("GitHub Project Partner Recommendation Component (Phase 2)", () => {
 
     // Requirement 9: Verify candidate raw bio is not exposed
     expect(screen.queryByText(/Secret candidate bio that must remain private/i)).not.toBeInTheDocument();
+  });
+
+  test("validates required bio and displays client-side validation error in semantic mode", async () => {
+    await renderComponent();
+
+    const bioTab = screen.getByRole("tab", { name: /Semantic Concept Search/i });
+    fireEvent.click(bioTab);
+
+    const searchBtn = screen.getByRole("button", { name: /Search Semantic Matches/i });
+    expect(searchBtn).toBeEnabled();
+
+    // Click search with empty textarea
+    fireEvent.click(searchBtn);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/Search description or project concept is required/i);
+    const bioInput = screen.getByLabelText(/Project Concept or Ideal Partner Description/i);
+    expect(bioInput).toHaveAttribute("aria-invalid", "true");
+    expect(bioInput).toHaveAttribute("aria-describedby", expect.stringContaining("validation-error-msg"));
   });
 
   test("resets form and clears active results when Reset Form is clicked", async () => {
