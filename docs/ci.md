@@ -44,7 +44,7 @@ Validate workflow syntax and GitHub Actions expressions with `actionlint .github
 
 ## Scope and known baseline
 
-The existing frontend dependency tree has high and critical npm audit findings. The workflow deliberately reports these as failures until they are triaged and resolved. Audit output includes build-time dependencies. A report alone does not establish exploitability in the deployed browser bundle.
+Compatible upgrades reduced the npm report from 69 flagged packages to 34 (0 critical, 10 high, 8 moderate, 16 low). The high-severity gate remains blocking. The remaining findings are in the CRA toolchain. See the [frontend dependency audit](frontend-dependency-audit.md) for dependency paths, browser exposure evidence, and the estimated Vite migration plan.
 
 Python requirements use lower bounds. The installed versions can vary with the operating system, interpreter and date. The workflow audits the versions it actually tests. These checks cover published dependency advisories and do not exercise real Sentence-BERT inference, production load, or repository settings.
 
