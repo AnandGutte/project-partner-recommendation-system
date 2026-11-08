@@ -34,33 +34,29 @@ Modernized, responsive, and accessible React client for discovering technical pr
 
 ---
 
-## 🛠️ Environment Configuration
+## Local development and testing
 
-Create a `.env` file in this directory (or use `.env.example`):
+Use Node 22.22.2 or a compatible newer LTS release. Start Flask from the repository root, then start the frontend from this directory.
 
 ```bash
-# URL of the Flask Backend API (defaults to http://127.0.0.1:5000)
-REACT_APP_API_URL=http://127.0.0.1:5000
-```
-
----
-
-## 🧪 Available Scripts
-
-### `npm start`
-Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
-
-### `npm test`
-Runs the automated React Testing Library test suite:
-```bash
-npm test -- --watchAll=false
-```
-
-### `npm run build`
-Compiles an optimized, minified production build into the `build/` folder.
-```bash
+npm ci
+npm run dev
+npm test
 npm run build
+npm audit --audit-level=high
 ```
+
+Vite serves the app at [http://localhost:3000](http://localhost:3000). `npm start` remains an alias. By default the browser uses same-origin requests and Vite proxies `/api/*`, `/recommend`, and `/semantic-bio-recommend` to Flask at `http://127.0.0.1:5000`. Set `FLASK_PROXY_TARGET` to point the local dev and preview proxies at another backend. This value stays in the Vite process.
+
+For a separately hosted API, set `VITE_API_URL` in `frontend/.env.local` or the build environment to its public HTTP(S) URL. The older `REACT_APP_API_URL` is accepted as a fallback. Flask must allow the exact frontend origin for direct cross-origin requests. The API URL is embedded in the bundle, so use a public URL without credentials. Other environment variables are not exposed by the Vite config.
+
+`npm test` runs the Vitest suite once. Use `npm run test:watch` for interactive development.
+
+## Production deployment
+
+Publish the contents of `frontend/dist/` (previously `frontend/build/`). `npm run preview` serves the built bundle for local verification. Its Flask proxy is for local preview only. For production, route the existing API paths to Flask on the same origin, or set `VITE_API_URL` and configure Flask CORS before building. An HTTPS frontend needs an HTTPS API for cross-origin requests.
+
+For a deployment under a prefix, build with `npm run build -- --base=/partners/` and mount the assets under the same prefix. Asset base and API URL are independent. Without an explicit API URL, the browser still calls root-relative API paths such as `/api/metadata`. Vite's default production browser target assumes modern browsers. Validate any older browser requirements before deployment. [Vite static deployment](https://vite.dev/guide/static-deploy.html)
 
 ---
 

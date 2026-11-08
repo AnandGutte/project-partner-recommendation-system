@@ -8,11 +8,10 @@ From the repository root, install the existing Python runtime dependencies, then
 
 ```powershell
 python -m pip install -r requirements.txt
-$env:PARTNER_CORS_ORIGINS = 'http://localhost:3000'
 python backend/app.py
 ```
 
-Set the origin to the exact React browser origin, including the scheme and port. Add `http://127.0.0.1:3000` to the comma-separated list if you use that URL too. By default, cross-origin browser access is disabled. Same-origin requests work without configuration. For production, use a production WSGI server with the factory `backend.app:create_app()`. Set exact origins only if the frontend runs on a separate origin.
+The local Vite dev proxy uses same-origin browser requests and needs no CORS allowlist. For direct cross-origin calls, set `PARTNER_CORS_ORIGINS` to the exact React browser origin, including scheme and port. By default, cross-origin browser access is disabled. For production, use a production WSGI server with the factory `backend.app:create_app()`. Set exact origins only if the frontend runs on a separate origin.
 
 | Environment variable | Behavior |
 |---|---|

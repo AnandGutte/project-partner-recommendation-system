@@ -1,9 +1,10 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import axios from "axios";
-import App from "./App";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import App from "./App.jsx";
 
-jest.mock("axios");
+vi.mock("axios", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 
 describe("GitHub Project Partner Recommendation Component (Phase 2)", () => {
   const mockMetadata = {
@@ -22,7 +23,7 @@ describe("GitHub Project Partner Recommendation Component (Phase 2)", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     axios.get.mockResolvedValue({ data: mockMetadata });
   });
 

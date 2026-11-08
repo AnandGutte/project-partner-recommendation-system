@@ -5,7 +5,7 @@ The [CI workflow](../.github/workflows/ci.yml) runs on pull requests targeting `
 | Job | Checks | Failure policy |
 | --- | --- | --- |
 | Backend tests and audit | Python 3.12, CPU-only Torch, `pip check`, full pytest suite, pip-audit against OSV for the installed environment | Test and installation errors fail the job. Any vulnerability reported by pip-audit fails the job. |
-| Frontend tests, build and audit | Node 22, non-interactive Jest, optimized React production build, npm audit against the locked tree | Test and build failures fail the job. High and critical npm advisories fail the job. Lower severity findings still appear in the report. |
+| Frontend tests, build and audit | Node 22, non-interactive Vitest, optimized React production build, npm audit against the locked tree | Test and build failures fail the job. High and critical npm advisories fail the job. Lower severity findings still appear in the report. |
 
 Audits run after a successful install even when tests fail. An audit service error also fails the check. The jobs use read-only repository access, disable persistent checkout credentials, and reference official actions by commit SHA. No repository or deployment secrets are passed to build or test steps. The tests use local fixtures or checked-in datasets, an isolated model cache, and Hugging Face offline settings. Dependency installs and audits access public package or advisory services.
 
@@ -30,12 +30,12 @@ site_packages=$("$backend_python" -c 'import sysconfig; print(sysconfig.get_path
 "$audit_python" -m pip_audit --strict --progress-spinner=off --vulnerability-service=osv --path "$site_packages"
 ```
 
-From the repository root with Node 22 available:
+From the repository root with Node 22.22.2 or a compatible newer LTS release:
 
 ```bash
 cd frontend
 npm ci --no-audit --no-fund
-CI=true npm test -- --watchAll=false --runInBand
+CI=true npm test
 CI=true npm run build
 npm audit --audit-level=high
 ```
@@ -44,7 +44,7 @@ Validate workflow syntax and GitHub Actions expressions with `actionlint .github
 
 ## Scope and known baseline
 
-Compatible upgrades reduced the npm report from 69 flagged packages to 34 (0 critical, 10 high, 8 moderate, 16 low). The high-severity gate remains blocking. The remaining findings are in the CRA toolchain. See the [frontend dependency audit](frontend-dependency-audit.md) for dependency paths, browser exposure evidence, and the estimated Vite migration plan.
+The Vite migration reduced the npm audit report from 34 findings (10 high, 8 moderate, 16 low, 0 critical) to zero in the locally tested lockfile. Vite replaces CRA's build, which included an ESLint pass. This workflow runs Vitest and the production build, and has no separate lint job. The [historical CRA audit](frontend-dependency-audit.md) records the prior findings and dependency paths. The high-severity npm audit gate remains blocking for future advisories.
 
 Python requirements use lower bounds. The installed versions can vary with the operating system, interpreter and date. The workflow audits the versions it actually tests. These checks cover published dependency advisories and do not exercise real Sentence-BERT inference, production load, or repository settings.
 
