@@ -9,6 +9,7 @@ Preserves and integrates original team algorithms:
 - Cluster Domain Tagging: DBSCAN and HDBSCAN clustering (Team)
 """
 
+from functools import cached_property
 import logging
 from pathlib import Path
 from threading import Lock
@@ -335,6 +336,16 @@ class RecommendationEngine:
             "recommendations": recommendations,
         }
 
+    @cached_property
+    def _lexical_index(self):
+        bio_texts = self.df["Bio"].fillna("").tolist() if "Bio" in self.df else []
+        vectorizer = TfidfVectorizer(stop_words="english")
+        try:
+            return vectorizer, vectorizer.fit_transform(bio_texts)
+        except ValueError as error:
+            logger.warning("Lexical bio search unavailable (%s).", type(error).__name__)
+            return None
+
     def recommend_by_bio(self, bio_query: str, top_k: int = 5) -> Dict[str, Any]:
         """
         Free-text semantic partner search based on project interests or bio.
@@ -371,13 +382,11 @@ class RecommendationEngine:
 
         if not used_sbert:
             # Fallback: TF-IDF on user bios
-            bio_texts = self.df["Bio"].fillna("").tolist() if "Bio" in self.df else []
-            bio_vectorizer = TfidfVectorizer(stop_words="english")
-            try:
-                bio_matrix = bio_vectorizer.fit_transform(bio_texts)
-            except ValueError as error:
-                logger.warning("Lexical bio search unavailable (%s).", type(error).__name__)
-                raise BioSearchUnavailable from None
+            with self._model_lock:
+                index = self._lexical_index
+            if index is None:
+                raise BioSearchUnavailable
+            bio_vectorizer, bio_matrix = index
             query_vec = bio_vectorizer.transform([query_text])
             scores = cosine_similarity(query_vec, bio_matrix)[0]
 
