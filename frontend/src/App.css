@@ -136,7 +136,7 @@ body {
   letter-spacing: 0.05em;
   padding: 3px 10px;
   background-color: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-hover);
   border-radius: var(--radius-pill);
   margin-bottom: 10px;
 }

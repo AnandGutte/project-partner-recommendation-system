@@ -8,8 +8,8 @@ export default defineConfig([
   globalIgnores(["build/", "coverage/", "dist/"]),
   js.configs.recommended,
   {
-    files: ["*.config.js"],
-    languageOptions: { globals: globals.node },
+    files: ["*.config.js", "scripts/**/*.{js,mjs}"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     files: ["src/**/*.{js,jsx}"],

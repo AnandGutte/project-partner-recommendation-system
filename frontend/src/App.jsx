@@ -274,10 +274,24 @@ function App() {
 
       <main id="main-content" className="main-content" tabIndex="-1">
         {/* Navigation Tabs for Search Modes */}
-        <div className="tab-nav" role="tablist" aria-label="Recommendation Search Strategy">
+        <div
+          className="tab-nav"
+          role="tablist"
+          aria-label="Recommendation Search Strategy"
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+              e.preventDefault();
+              const nextTab = activeTab === "hybrid" ? "bio" : "hybrid";
+              setActiveTab(nextTab);
+              setValidationError("");
+              document.getElementById(`tab-${nextTab}`)?.focus();
+            }
+          }}
+        >
           <button
             role="tab"
             id="tab-hybrid"
+            tabIndex={activeTab === "hybrid" ? 0 : -1}
             aria-selected={activeTab === "hybrid"}
             aria-controls="panel-hybrid"
             className={`tab-btn ${activeTab === "hybrid" ? "active" : ""}`}
@@ -291,6 +305,7 @@ function App() {
           <button
             role="tab"
             id="tab-bio"
+            tabIndex={activeTab === "bio" ? 0 : -1}
             aria-selected={activeTab === "bio"}
             aria-controls="panel-bio"
             className={`tab-btn ${activeTab === "bio" ? "active" : ""}`}
@@ -325,7 +340,7 @@ function App() {
 
         {/* Inline Form Validation Error */}
         {validationError && (
-          <div className="alert-banner alert-warning" role="alert">
+          <div id="validation-error-msg" className="alert-banner alert-warning" role="alert" aria-live="assertive">
             <span className="alert-icon" aria-hidden="true">ℹ️</span>
             <div className="alert-text">{validationError}</div>
           </div>
@@ -387,7 +402,12 @@ function App() {
                     maxLength={39}
                     disabled={loading}
                     aria-required="true"
-                    aria-describedby="username-hint"
+                    aria-invalid={activeTab === "hybrid" && !!validationError}
+                    aria-describedby={
+                      activeTab === "hybrid" && validationError
+                        ? "validation-error-msg username-hint"
+                        : "username-hint"
+                    }
                   />
                   <span id="username-hint" className="form-hint">
                     Target user against which candidate similarities will be calculated.
@@ -474,7 +494,7 @@ function App() {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  disabled={loading || !username.trim()}
+                  disabled={loading}
                   aria-busy={loading}
                 >
                   {loading ? (
@@ -531,7 +551,12 @@ function App() {
                   maxLength={1000}
                   disabled={loading}
                   aria-required="true"
-                  aria-describedby="bio-hint"
+                  aria-invalid={activeTab === "bio" && !!validationError}
+                  aria-describedby={
+                    activeTab === "bio" && validationError
+                      ? "validation-error-msg bio-hint"
+                      : "bio-hint"
+                  }
                 />
                 <span id="bio-hint" className="form-hint">
                   {bioQuery.length}/1,000 characters. SBERT model computes cosine distance against candidate embeddings.
@@ -561,7 +586,7 @@ function App() {
                 <button
                   type="submit"
                   className="btn btn-secondary"
-                  disabled={loading || !bioQuery.trim()}
+                  disabled={loading}
                   aria-busy={loading}
                 >
                   {loading ? (
@@ -707,9 +732,10 @@ function App() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="github-link"
-                            aria-label={`View ${r.Username}'s GitHub profile in new tab`}
                           >
-                            View GitHub Profile ↗
+                            View GitHub Profile{" "}
+                            <span className="visually-hidden">for @{r.Username} in new tab</span>{" "}
+                            <span aria-hidden="true">↗</span>
                           </a>
                         ) : (
                           <span className="no-link">Profile link unavailable</span>
@@ -774,9 +800,10 @@ function App() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="github-link"
-                            aria-label={`View ${r.Username}'s GitHub profile in new tab`}
                           >
-                            View GitHub Profile ↗
+                            View GitHub Profile{" "}
+                            <span className="visually-hidden">for @{r.Username} in new tab</span>{" "}
+                            <span aria-hidden="true">↗</span>
                           </a>
                         ) : (
                           <span className="no-link">Profile link unavailable</span>
