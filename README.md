@@ -1,120 +1,255 @@
 # 🤝 GitHub Project Partner Recommendation System
 
-> 💡 **Showcase Repository:** Personal mirror for **Anand Gutte** (CS 5661 Data Science Class Project).  
+> 💡 **Showcase Repository:** Personal portfolio mirror and modernization by **Anand Gutte** (based on the CS 5661 Data Science university project).  
 > 🔗 **Original Team Repository:** [cs5661-dsproject-Project-Partner-Recommendation-System](https://github.com/EKTAMULKALWAR/cs5661-dsproject-Project-Partner-Recommendation-System.git)
 
 ---
 
-## 🚀 Elevator Pitch (Big Idea)
+## 🚀 Overview
 
-This project builds a **hybrid recommendation system** to suggest ideal GitHub project collaborators. By analyzing public metadata — such as repositories, languages, bios, and interaction metrics — it identifies developers with aligned interests and technical backgrounds. The system combines:
+The **GitHub Project Partner Recommendation System** matches software developers with compatible project partners by analyzing public GitHub profile metadata. The system blends three distinct machine learning signals into a unified hybrid score:
 
-- 🔍 Content-Based Filtering (Languages & Repositories)
-- 👥 Collaborative Filtering (Followers & Following)
-- 🧠 NLP-Based Semantic Matching (User Bios)
+1. 🔍 **Content-Based Filtering:** Vectorized TF-IDF feature space capturing technical languages and repository portfolios.
+2. 👥 **Activity-Based Profile Similarity (Collaborative Filtering Proxy):** MinMax-normalized developer engagement vectors (`Public_Repos`, `Followers`, `Following`) with cosine similarity.
+3. 🧠 **Bio-Semantic NLP Matching:** Dense vector embeddings (Sentence-BERT `all-MiniLM-L6-v2`) measuring conceptual alignment in developer bios and project interests.
+4. 🏷️ **Cluster Domain Segmentation:** Unsupervised density clustering (HDBSCAN & DBSCAN) with Optuna hyperparameter optimization.
 
 ---
 
-## ⚙️ Installation Instructions
+## 🏛️ Architecture & Recommendation Pipeline
 
-To get started with this project locally:
+```mermaid
+flowchart TD
+    Client["React Frontend (Responsive UI)"] --> API["Flask REST API (backend/app.py)"]
+    API --> Engine["RecommendationEngine (backend/engine.py)"]
+
+    subgraph DataLayer ["Aligned Preprocessed Data Layer"]
+        Profiles["cleaned_github_users.csv (3,890 unique users)"]
+        Embeddings["bio_embeddings.npy (3,890 × 384 float32 vectors)"]
+        HDBSCAN["hdbscan_optuna_clustered_users_with_domain.csv"]
+        DBSCAN["dbscan_optuna_clustered_users_with_domain.csv"]
+    end
+
+    Engine --> DataLayer
+
+    subgraph Scoring ["Real-Time Tri-Component Scorer"]
+        Content["Content Similarity (Weight: 0.45)<br/>TF-IDF on Languages + Repositories"]
+        Activity["Activity-Based Similarity (Weight: 0.35)<br/>Normalized Followers, Following, Repos"]
+        Bio["Bio-Semantic Similarity (Weight: 0.20)<br/>Sentence-BERT Bio Vectors Cosine Sim"]
+    end
+
+    Engine --> Scoring
+    Scoring --> Hybrid["Hybrid Score = 0.45*Content + 0.35*Activity + 0.20*Bio"]
+    Hybrid --> Filters["Location & Domain Specialization Filters"]
+    Filters --> Output["Top-K Candidate Partners + Match Explanations"]
+```
+
+---
+
+## 📊 Reproducible Evaluation & Weight Comparison
+
+In unsupervised developer matching, relevance is defined through an objective, defensible protocol: **a candidate is deemed relevant if they share $\ge 1$ programming language and belong to the same project cluster domain.**
+
+Evaluated across a benchmark of 50 sample query developers with known tech stacks (`python -m backend.evaluation`):
+
+| Configuration | Content Weight | Activity (Collab) Weight | Bio-Semantic Weight | Precision@5 | Recall@5 | MAP@5 | Intra-List Diversity (ILD) | Catalog Coverage (%) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Balanced Baseline (Default)** | **0.450** | **0.350** | **0.200** | **0.956** | **0.0015** | **0.9653** | **0.7817** | **5.66%** |
+| Content Dominant | 0.600 | 0.200 | 0.200 | 0.948 | 0.0015 | 0.9578 | 0.7821 | 5.68% |
+| Bio-Semantic Dominant | 0.300 | 0.200 | 0.500 | 0.956 | 0.0015 | 0.9664 | 0.7966 | 5.68% |
+| Activity Dominant | 0.200 | 0.600 | 0.200 | 0.936 | 0.0015 | 0.9643 | 0.7833 | 5.84% |
+| Equal Weights | 0.333 | 0.333 | 0.334 | 0.960 | 0.0016 | 0.9755 | 0.7916 | 5.55% |
+
+> **Key Observations:**
+> - The **Balanced Baseline** achieves **95.6% Precision@5** and **0.9653 MAP@5**, verifying that top matches share core technical overlap within the user's domain.
+> - High **Intra-List Diversity (0.7817)** confirms recommendations introduce complementary tech stacks rather than identical clone profiles.
+> - Modest **Recall@5 (0.0015)** reflects top-5 selection out of broad domain clusters containing hundreds of matching candidates.
+
+---
+
+## ⚙️ Local Installation & Setup
+
+### Prerequisites
+- Python 3.10+ (64-bit)
+- Node.js 18+ and npm
+
+### 1. Clone & Set Up Python Virtual Environment
 
 ```bash
-# Clone the repository
-git clone [https://github.com/AnandGutte/project-partner-recommendation-system.git](https://github.com/AnandGutte/project-partner-recommendation-system.git)
+# Clone repository
+git clone https://github.com/AnandGutte/project-partner-recommendation-system.git
 cd project-partner-recommendation-system
 
-# Create a virtual environment (optional but recommended)
+# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# On Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# On Linux/macOS:
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Launch Jupyter
-jupyter notebook
 ```
 
-To run the full-stack application:
+### 2. Start the Backend API
+
+The Flask application supports execution from both the repository root and the backend directory:
 
 ```bash
-# Backend
-cd backend
-source ../venv/bin/activate
-python app.py
+# Option A: From root directory
+python backend/app.py
 
-# Frontend
+# Option B: From backend directory
+cd backend
+python app.py
+```
+
+The API will start at `http://127.0.0.1:5000`.
+
+### 3. Start the React Frontend
+
+In a separate terminal:
+
+```bash
 cd frontend
 npm install
 npm start
 ```
 
-## 📂 Repository Description
+The frontend will start at `http://localhost:3000`.
+
+---
+
+## 🧪 Automated Testing
+
+Both backend and frontend test suites are fully automated and verified:
 
 ```bash
-├── data/             # Raw and processed GitHub user data
-├── backend/          # Flask backend for API endpoints
-├── frontend/         # React-based frontend app
-├── notebooks/        # Jupyter notebooks (EDA, modeling, evaluation)
-├── requirements.txt  # Python dependencies
-└── docs              # Dataset documentation (Google’s Data Card style)
+# Run backend pytest suite (15 unit, API integration, and evaluation tests)
+pytest backend/tests -v
 
+# Run frontend Jest component tests (5 component & interaction tests)
+cd frontend
+npm test -- --watchAll=false
 ```
 
-## 👥 Team Members & Roles
+---
 
-Ekta Mulkalwar – Lead Data Engineer & Content-Based Modeling
-Designed scraping pipeline, handled preprocessing, built the content-based system and hybrid model.
+## 📡 API Reference
 
-Apoorva Durge – NLP & Feature Extraction
-Processed user bios using TF-IDF and Sentence-BERT embeddings.
+### `GET /api/health`
+Health check and runtime metadata.
+```json
+{
+  "status": "healthy",
+  "total_users": 3890,
+  "clustering_methods": ["hdbscan", "dbscan"],
+  "bio_embeddings_loaded": true,
+  "engine_mode": "hybrid_vector_scoring"
+}
+```
 
-Anand Gutte – Collaborative Filtering Developer
-Built cosine-based user interaction similarity metrics.
+### `GET /api/metadata`
+Returns verified clustering domains (no typos or stale options) and sample test users.
+```json
+{
+  "total_users": 3890,
+  "clustering_methods": {
+    "hdbscan": {
+      "label": "HDBSCAN (Stable clusters)",
+      "domains": ["DevOps & Scripting", "Testing & Sparse Data", "Unknown Users"]
+    },
+    "dbscan": {
+      "label": "DBSCAN (Granular domains)",
+      "domains": ["Blockchain & Ripple Projects", "DevOps & Scripting", "Game & Modding", "MERN & Node.js Dev", "Misc / Other", "Ruby & Web Dev", "Testing & Beginners", "Unknown / Sparse Users"]
+    }
+  },
+  "sample_usernames": ["abhay", "mojombo", "defunkt", "pjhyett", "wycats"]
+}
+```
 
-Mansi Aher – Data Cleaning Specialist
-Addressed missing values and data consistency.
+### `POST /recommend` *(Legacy)* & `POST /api/recommend` *(Modernized)*
+Hybrid partner search with optional location and domain filters.
+```json
+// Request:
+{
+  "username": "abhay",
+  "method": "hdbscan",
+  "location": "San Francisco",
+  "domain": "DevOps & Scripting"
+}
 
-Anvaya Chandrika Gudibanda Sreesha – Visualization & Geo Insights
-Created charts and processed location-based metadata.
+// Response:
+[
+  {
+    "Username": "raymorgan",
+    "Domain_Tag": "DevOps & Scripting",
+    "Location": "San Francisco, CA",
+    "Profile_URL": "https://github.com/raymorgan",
+    "Languages": ["Erlang", "Ruby", "JavaScript"],
+    "hybrid_score": 0.537,
+    "explanation": "Shared languages: Erlang. High interaction similarity."
+  }
+]
+```
 
-Shalini Nistala – Evaluation & Metrics
-Defined validation metrics: precision, recall, MAP.
+### `POST /semantic-bio-recommend` *(Legacy)* & `POST /api/semantic-bio-recommend` *(Modernized)*
+Free-text semantic partner query based on project concepts or developer bios.
+```json
+// Request:
+{
+  "bio": "looking for a python machine learning partner to build recommendation algorithms"
+}
 
-Shah Drashti Kirtibai – Encoding & Feature Engineering
-Used LabelEncoder and vectorized categorical fields.
-
-Neel Jaysukhbhai Khunt – Repository & Documentation Lead
-Maintained GitHub repo structure and version control.
-
-Movva Jeevan Sidhardha – Location Processing Support
-Geocoded user locations and enriched spatial data.
-
-Sai Kiran Bandapally – Repo Insights Engineer
-Parsed repositories for language richness and diversity.
+// Response:
+[
+  {
+    "Username": "unfo",
+    "Bio": "Python, Machine Learning, Data Science",
+    "Location": "Remote",
+    "Profile_URL": "https://github.com/unfo",
+    "similarity": 0.8142
+  }
+]
+```
 
 ---
 
-## 💡 About
+## 👥 Original University Team & Roles
 
-This system analyzes 5,000+ public GitHub profiles to help users find project partners that match on:
+*From the original CS 5661 Data Science university project at Cal State LA:*
 
-Technologies used
-
-Bio semantics
-
-Engagement behavior
-
-All models are modular, allowing future additions such as GitHub activity scores, real-time search, or OAuth-based login.
+- **Ekta Mulkalwar** – Lead Data Engineer & Content-Based Modeling  
+  *Designed scraping pipeline, preprocessing, and content-based recommendation logic.*
+- **Apoorva Durge** – NLP & Feature Extraction  
+  *Extracted text features from user bios using TF-IDF and Sentence-BERT embeddings.*
+- **Anand Gutte** – Collaborative Filtering Developer  
+  *Built developer interaction similarity metrics using normalized engagement attributes.*
+- **Mansi Aher** – Data Cleaning Specialist  
+  *Handled missing data, duplicates, and feature sanitation.*
+- **Anvaya Chandrika Gudibanda Sreesha** – Visualization & Geo Insights  
+  *Constructed exploratory data visualization and location-based metadata mapping.*
+- **Shalini Nistala** – Evaluation & Metrics  
+  *Formulated theoretical validation metrics: precision, recall, and MAP.*
+- **Shah Drashti Kirtibai** – Encoding & Feature Engineering  
+  *Vectorized categorical features and handled numerical scaling.*
+- **Neel Jaysukhbhai Khunt** – Repository & Documentation Lead  
+  *Maintained Git version control and core project documentation.*
+- **Movva Jeevan Sidhardha** – Location Processing Support  
+  *Geocoded coordinates using Nominatim / Geopy.*
+- **Sai Kiran Bandapally** – Repo Insights Engineer  
+  *Parsed GitHub repositories for language diversity.*
 
 ---
 
-## 📌 Resources
+## 🛠️ Showcase Modernization (by Anand Gutte)
 
-Notebook-based experiments: notebooks/
+Enhancements implemented in this showcase release:
 
-Live Flask API server: backend/app.py
-
-React frontend app: frontend/src/
-
-Cluster & domain evaluation: UMAP + DBSCAN
+1. **Dynamic Real-Time Vector Engine:** Replaced static precomputed single-user CSV filtering with a fully vectorized in-memory `RecommendationEngine` that scores candidates dynamically for any input username.
+2. **Data Space Alignment:** Resolved row-count discrepancies (4,104 raw rows vs. 3,890 unique users), aligning Sentence-BERT bio embeddings 1-to-1 with profile data.
+3. **Reproducible Evaluation Suite:** Implemented `backend/evaluation.py` to benchmark Precision@K, Recall@K, MAP@K, Intra-List Diversity, and Catalog Coverage under a transparent ground truth protocol.
+4. **Resilient API:** Added health check (`/api/health`), dynamic domain metadata discovery (`/api/metadata`), literal location matching (regex-safe), and graceful offline TF-IDF fallback for bio queries.
+5. **Modern, Accessible UI:** Modernized React interface with dynamic domain options, accessible labels, responsive CSS grid, match score badges, and language chips.
+6. **Automated Testing:** 15 automated backend pytest tests and 5 Jest component tests with 100% pass rate.
