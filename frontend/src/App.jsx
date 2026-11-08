@@ -493,7 +493,7 @@ function App() {
               onClick={() => setShowAboutModal(true)}
               aria-haspopup="dialog"
             >
-              <span>About</span><span className="btn-text-full"> & Team</span>
+              <span>About</span><span className="btn-text-full"> &amp; Team</span>
             </button>
 
             {/* Verified GitHub Repository Link */}
@@ -553,7 +553,7 @@ function App() {
                 <span className="metric-label">Clustering Domains</span>
               </div>
               <div className="metric-value">11 Categories</div>
-              <div className="metric-desc">HDBSCAN (3) & DBSCAN (8) Models</div>
+              <div className="metric-desc">HDBSCAN (3) &amp; DBSCAN (8) Models</div>
             </div>
 
             <div className="metric-card">
@@ -656,7 +656,7 @@ function App() {
           >
             <form onSubmit={handleHybridSubmit} noValidate>
               <div className="panel-intro">
-                <h2 className="panel-heading">Target Developer & Partner Criteria</h2>
+                <h2 className="panel-heading">Target Developer &amp; Partner Criteria</h2>
                 <p className="panel-desc">
                   Input a GitHub username to compute real-time similarities across repository languages, developer activity metrics, and bio vectors.
                 </p>
@@ -834,7 +834,7 @@ function App() {
             <form onSubmit={handleBioSubmit} noValidate>
               <div className="panel-intro">
                 <div className="panel-intro-header">
-                  <h2 className="panel-heading">Semantic Bio & Project Concept Match</h2>
+                  <h2 className="panel-heading">Semantic Bio &amp; Project Concept Match</h2>
                   <span className="engine-indicator-pill" title="Current backend search engine">
                     Active Engine: {activeEngine || "Sentence-BERT / TF-IDF"}
                   </span>
@@ -1000,7 +1000,7 @@ function App() {
                     No candidates matched all of your filter criteria. Try selecting <strong>Any Domain</strong> or clearing the location filter to broaden candidate eligibility.
                   </p>
                   <button type="button" className="btn btn-outline" onClick={resetFilters}>
-                    Clear Filters & Reset
+                    Clear Filters &amp; Reset
                   </button>
                 </div>
               ) : (
@@ -1229,22 +1229,22 @@ function App() {
                 <strong>GitHub Project Partner Recommendation System</strong> is a portfolio showcase implementation based on the <strong>CS 5661 Data Science university project</strong> at California State University, Los Angeles (Cal State LA).
               </p>
               <div className="modal-section">
-                <h3 className="modal-subtitle">Original University Team Contributors & Roles</h3>
+                <h3 className="modal-subtitle">Original University Team Contributors &amp; Roles</h3>
                 <ul className="modal-team-list">
-                  <li><strong>Ekta Mulkalwar</strong> – Lead Data Engineer & Content-Based Modeling</li>
-                  <li><strong>Apoorva Durge</strong> – NLP & Feature Extraction (TF-IDF & Sentence-BERT)</li>
-                  <li><strong>Anand Gutte</strong> – Collaborative Filtering & Activity Similarity Developer</li>
+                  <li><strong>Ekta Mulkalwar</strong> – Lead Data Engineer &amp; Content-Based Modeling</li>
+                  <li><strong>Apoorva Durge</strong> – NLP &amp; Feature Extraction (TF-IDF &amp; Sentence-BERT)</li>
+                  <li><strong>Anand Gutte</strong> – Collaborative Filtering &amp; Activity Similarity Developer</li>
                   <li><strong>Mansi Aher</strong> – Data Cleaning Specialist</li>
-                  <li><strong>Anvaya Chandrika Gudibanda Sreesha</strong> – Visualization & Geo Insights</li>
-                  <li><strong>Shalini Nistala</strong> – Evaluation & Metrics Formulator</li>
-                  <li><strong>Shah Drashti Kirtibai</strong> – Encoding & Feature Engineering</li>
-                  <li><strong>Neel Jaysukhbhai Khunt</strong> – Repository & Documentation Lead</li>
+                  <li><strong>Anvaya Chandrika Gudibanda Sreesha</strong> – Visualization &amp; Geo Insights</li>
+                  <li><strong>Shalini Nistala</strong> – Evaluation &amp; Metrics Formulator</li>
+                  <li><strong>Shah Drashti Kirtibai</strong> – Encoding &amp; Feature Engineering</li>
+                  <li><strong>Neel Jaysukhbhai Khunt</strong> – Repository &amp; Documentation Lead</li>
                   <li><strong>Movva Jeevan Sidhardha</strong> – Location Processing Support</li>
                   <li><strong>Sai Kiran Bandapally</strong> – Repo Insights Engineer</li>
                 </ul>
               </div>
               <div className="modal-section">
-                <h3 className="modal-subtitle">Modernization & Engineering Enhancements</h3>
+                <h3 className="modal-subtitle">Modernization &amp; Engineering Enhancements</h3>
                 <p className="modal-text">
                   This showcase demonstrates modern production software practices: vectorized dynamic scoring engine, cold-start handling, offline SBERT fallback, WCAG 2.2 AA accessibility, real-browser QA test harness, Vite migration, and dark developer dashboard styling.
                 </p>
@@ -1285,16 +1285,16 @@ function App() {
           </div>
 
           <details className="footer-team-details">
-            <summary className="footer-summary">Original University Team Contributors & Roles</summary>
+            <summary className="footer-summary">Original University Team Contributors &amp; Roles</summary>
             <ul className="footer-team-list">
-              <li><strong>Ekta Mulkalwar</strong> – Lead Data Engineer & Content-Based Modeling</li>
-              <li><strong>Apoorva Durge</strong> – NLP & Feature Extraction (TF-IDF & Sentence-BERT)</li>
-              <li><strong>Anand Gutte</strong> – Collaborative Filtering & Activity Similarity Developer</li>
+              <li><strong>Ekta Mulkalwar</strong> – Lead Data Engineer &amp; Content-Based Modeling</li>
+              <li><strong>Apoorva Durge</strong> – NLP &amp; Feature Extraction (TF-IDF &amp; Sentence-BERT)</li>
+              <li><strong>Anand Gutte</strong> – Collaborative Filtering &amp; Activity Similarity Developer</li>
               <li><strong>Mansi Aher</strong> – Data Cleaning Specialist</li>
-              <li><strong>Anvaya Chandrika Gudibanda Sreesha</strong> – Visualization & Geo Insights</li>
-              <li><strong>Shalini Nistala</strong> – Evaluation & Metrics Formulator</li>
-              <li><strong>Shah Drashti Kirtibai</strong> – Encoding & Feature Engineering</li>
-              <li><strong>Neel Jaysukhbhai Khunt</strong> – Repository & Documentation Lead</li>
+              <li><strong>Anvaya Chandrika Gudibanda Sreesha</strong> – Visualization &amp; Geo Insights</li>
+              <li><strong>Shalini Nistala</strong> – Evaluation &amp; Metrics Formulator</li>
+              <li><strong>Shah Drashti Kirtibai</strong> – Encoding &amp; Feature Engineering</li>
+              <li><strong>Neel Jaysukhbhai Khunt</strong> – Repository &amp; Documentation Lead</li>
               <li><strong>Movva Jeevan Sidhardha</strong> – Location Processing Support</li>
               <li><strong>Sai Kiran Bandapally</strong> – Repo Insights Engineer</li>
             </ul>

@@ -11,8 +11,10 @@ from werkzeug.exceptions import BadRequest, HTTPException, UnsupportedMediaType
 
 if __package__:
     from .engine import BioSearchUnavailable, RecommendationEngine
+    from .limits import AdmissionError, RecommendationLimits
 else:
     from engine import BioSearchUnavailable, RecommendationEngine
+    from limits import AdmissionError, RecommendationLimits
 
 BASE_DIR = Path(__file__).resolve().parent
 METHODS = ("dbscan", "hdbscan")
@@ -122,6 +124,7 @@ def create_app():
             supports_credentials=False,
         )
 
+    limits = RecommendationLimits()
     data_dir = Path(os.environ.get("PARTNER_DATA_DIR") or BASE_DIR / "data")
     engine = None
     try:
@@ -140,6 +143,10 @@ def create_app():
     @app.errorhandler(APIError)
     def handle_api_error(error):
         return jsonify(error=str(error), code=error.code), error.status
+
+    @app.errorhandler(AdmissionError)
+    def handle_admission_error(error):
+        return jsonify(error=str(error), code=error.code), error.status, {"Retry-After": str(error.retry_after)}
 
     @app.errorhandler(HTTPException)
     def handle_http_error(error):
@@ -201,13 +208,15 @@ def create_app():
         if method not in METHODS:
             raise APIError(400, "invalid_request", "method must be dbscan or hdbscan.")
         top_k = read_top_k(payload) if rich else 5
-        result = require_engine().recommend_hybrid(
-            username=username,
-            location=None if location == "All" else location,
-            domain=domain,
-            method=method,
-            top_k=top_k,
-        )
+        service = require_engine()
+        with limits.admit("partner"):
+            result = service.recommend_hybrid(
+                username=username,
+                location=None if location == "All" else location,
+                domain=domain,
+                method=method,
+                top_k=top_k,
+            )
         recommendations = public_records(result, PARTNER_FIELDS + SCORE_FIELDS if rich else PARTNER_FIELDS)
         if not rich:
             return jsonify(recommendations)
@@ -231,8 +240,10 @@ def create_app():
         payload = read_payload()
         bio = read_text(payload, "bio", 1000, required=True)
         top_k = read_top_k(payload) if rich else 5
+        service = require_engine()
         try:
-            result = require_engine().recommend_by_bio(bio_query=bio, top_k=top_k)
+            with limits.admit("bio"):
+                result = service.recommend_by_bio(bio_query=bio, top_k=top_k)
         except BioSearchUnavailable:
             raise APIError(503, "recommendation_unavailable", "Bio recommendations are unavailable.") from None
         recommendations = public_records(result, BIO_FIELDS)
