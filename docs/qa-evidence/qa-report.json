@@ -1,57 +1,40 @@
 {
-  "timestamp": "2026-11-08T08:22:00.341Z",
+  "timestamp": "2026-11-08T10:23:28.029Z",
   "browser": "Google Chrome",
+  "theme": "Dark Developer Dashboard",
   "scenarios": [
     {
-      "name": "Initial Load & Metadata",
+      "name": "Desktop Homepage & Shell Hydration",
       "status": "PASSED",
       "details": {
         "title": "GitHub Project Partner Recommendation System",
-        "heading": "🤝 GitHub Project Partner Recommendation",
-        "statsCount": 3
+        "brandName": "Project Partner",
+        "apiBadge": "API Online",
+        "metricCards": 4
       }
     },
     {
-      "name": "Skip Link Focus",
+      "name": "Keyboard Navigation & Skip Link",
       "status": "PASSED",
       "details": {
-        "activeEl": {
-          "tagName": "A",
-          "className": "skip-link",
-          "text": "Skip to main search content",
-          "href": "#main-content"
-        },
-        "skipLinkVisible": true
-      }
-    },
-    {
-      "name": "Tablist Keyboard Navigation (Arrow Keys)",
-      "status": "PASSED",
-      "details": {
-        "activeTabAfterRight": {
+        "skipLinkVisible": true,
+        "tabAfterRight": {
           "id": "tab-bio",
-          "ariaSelected": "true"
+          "selected": "true"
         },
-        "activeTabAfterLeft": {
+        "tabAfterLeft": {
           "id": "tab-hybrid",
-          "ariaSelected": "true"
+          "selected": "true"
         }
       }
     },
     {
-      "name": "Sample Profile Quick-Pick",
+      "name": "Desktop Hybrid Results Workflow",
       "status": "PASSED",
       "details": {
-        "userVal": "abhay"
-      }
-    },
-    {
-      "name": "Hybrid Partner Search",
-      "status": "PASSED",
-      "details": {
-        "cardCount": 5,
-        "firstCardUser": "@raymorgan",
-        "scoreChips": 5,
+        "hybridCount": 5,
+        "firstUser": "@raymorgan",
+        "breakdownMeters": 15,
         "profileLinks": 5
       }
     },
@@ -63,27 +46,19 @@
       }
     },
     {
-      "name": "Reset Form Functionality",
+      "name": "Form Validation Error & Semantics",
       "status": "PASSED",
       "details": {
-        "clearedUser": "",
-        "clearedLoc": "",
-        "hasResults": false
+        "valMsg": "GitHub username is required.",
+        "isInvalid": "true"
       }
     },
     {
-      "name": "Client-side Validation Error",
+      "name": "Semantic Concept Search & Privacy",
       "status": "PASSED",
       "details": {
-        "valMsg": "GitHub username is required."
-      }
-    },
-    {
-      "name": "Semantic Concept Search",
-      "status": "PASSED",
-      "details": {
-        "bioCardCount": 5,
-        "bioScoreChips": 5,
+        "bioCount": 5,
+        "engineLabel": "TF-IDF Fallback",
         "rawBioLeaks": false
       }
     },
@@ -94,75 +69,126 @@
         "errorText": "Request Failed: Simulated Backend Cluster Failure (QA Test)",
         "dismissed": true
       }
+    },
+    {
+      "name": "About & Contributor Modal Dialog",
+      "status": "PASSED",
+      "details": {
+        "modalTitle": "About Project Partner",
+        "teamListCount": 10,
+        "closedOnEsc": true
+      }
+    },
+    {
+      "name": "Theme Selection & Light Theme Accessibility",
+      "status": "PASSED",
+      "details": {
+        "lightThemeAttr": "light",
+        "storedPref": "light",
+        "mobileLightOverflow": false,
+        "darkThemeAttr": "dark",
+        "systemPref": "system",
+        "theme320Dark": "dark"
+      }
     }
   ],
   "axeAudits": [
     {
       "context": "Initial Page State",
-      "passesCount": 43,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Hybrid Results State",
-      "passesCount": 44,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Empty Results State",
-      "passesCount": 44,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
-      "context": "Validation State",
-      "passesCount": 44,
+      "context": "Validation Error State",
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Semantic Results State",
-      "passesCount": 44,
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     },
     {
       "context": "Network Error State",
-      "passesCount": 44,
+      "passesCount": 46,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "About Modal State",
+      "passesCount": 50,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Desktop Light Homepage",
+      "passesCount": 46,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Desktop Light Hybrid Results",
+      "passesCount": 46,
       "violationsCount": 0,
       "violations": []
     }
   ],
   "responsiveChecks": [
     {
-      "name": "Mobile",
-      "width": 375,
-      "height": 667,
-      "horizontalOverflow": false,
+      "name": "Tablet (768x1024)",
+      "overflow": false,
       "status": "PASSED",
-      "screenshot": "06-responsive-mobile-375x667.png"
+      "screenshot": "10-tablet-layout.png"
     },
     {
-      "name": "Tablet",
-      "width": 768,
-      "height": 1024,
-      "horizontalOverflow": false,
+      "name": "Mobile (375x667)",
+      "overflow": false,
       "status": "PASSED",
-      "screenshot": "06-responsive-tablet-768x1024.png"
+      "screenshot": "09-mobile-recommendation-cards.png"
     },
     {
-      "name": "Desktop",
-      "width": 1280,
-      "height": 800,
-      "horizontalOverflow": false,
+      "name": "Compact Mobile (320x568)",
+      "overflow": false,
       "status": "PASSED",
-      "screenshot": "06-responsive-desktop-1280x800.png"
+      "screenshot": "16-mobile-320px-header.png"
     }
   ],
+  "screenshots": [
+    "01-desktop-homepage.png",
+    "11-loading-state.png",
+    "02-desktop-hybrid-results.png",
+    "03-empty-state.png",
+    "04-validation-error.png",
+    "05-desktop-semantic-results.png",
+    "06-network-error.png",
+    "07-about-modal.png",
+    "08-mobile-search-interface.png",
+    "09-mobile-recommendation-cards.png",
+    "16-mobile-320px-header.png",
+    "10-tablet-layout.png",
+    "12-desktop-light-homepage.png",
+    "13-desktop-light-hybrid-results.png",
+    "14-mobile-light-interface.png",
+    "15-mobile-light-recommendation-cards.png"
+  ],
   "summary": {
-    "totalTests": 13,
-    "passed": 13,
+    "totalTests": 12,
+    "passed": 12,
     "failed": 0,
     "defectsFound": []
   }

@@ -1,7 +1,11 @@
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import axios from "axios";
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import App from "./App.jsx";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import App, {
+  THEME_STORAGE_KEY,
+  getInitialThemePreference,
+  resolveActiveTheme,
+} from "./App.jsx";
 
 vi.mock("axios", () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 
@@ -295,5 +299,207 @@ describe("GitHub Project Partner Recommendation Component (Phase 2)", () => {
     fireEvent.click(resetBtn);
 
     expect(usernameInput).toHaveValue("");
+  });
+
+  describe("Theme Appearance Support (Phase 6: System, Dark, Light)", () => {
+    let originalMatchMedia;
+    let matchMediaListeners;
+
+    beforeEach(() => {
+      localStorage.clear();
+      document.documentElement.removeAttribute("data-theme");
+      matchMediaListeners = new Set();
+      originalMatchMedia = window.matchMedia;
+
+      window.matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: false, // Default light OS preference
+        media: query,
+        onchange: null,
+        addListener: vi.fn((fn) => matchMediaListeners.add(fn)),
+        removeListener: vi.fn((fn) => matchMediaListeners.delete(fn)),
+        addEventListener: vi.fn((event, fn) => {
+          if (event === "change") matchMediaListeners.add(fn);
+        }),
+        removeEventListener: vi.fn((event, fn) => {
+          if (event === "change") matchMediaListeners.delete(fn);
+        }),
+        dispatchEvent: vi.fn(),
+      }));
+    });
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+      localStorage.clear();
+      document.documentElement.removeAttribute("data-theme");
+    });
+
+    test("theme helper functions resolve correct defaults and fallbacks", () => {
+      // Empty storage returns system
+      expect(getInitialThemePreference()).toBe("system");
+
+      // Valid storage values
+      localStorage.setItem(THEME_STORAGE_KEY, "dark");
+      expect(getInitialThemePreference()).toBe("dark");
+
+      localStorage.setItem(THEME_STORAGE_KEY, "light");
+      expect(getInitialThemePreference()).toBe("light");
+
+      // Storage throw fallback
+      const getItemSpy = vi.spyOn(Storage.prototype, "getItem").mockImplementationOnce(() => {
+        throw new Error("SecurityError: Access Denied");
+      });
+      expect(getInitialThemePreference()).toBe("system");
+      getItemSpy.mockRestore();
+
+      // resolveActiveTheme direct resolutions
+      expect(resolveActiveTheme("dark")).toBe("dark");
+      expect(resolveActiveTheme("light")).toBe("light");
+
+      // System with matchMedia false -> light
+      expect(resolveActiveTheme("system")).toBe("light");
+
+      // System with matchMedia true -> dark
+      window.matchMedia = vi.fn().mockReturnValueOnce({ matches: true });
+      expect(resolveActiveTheme("system")).toBe("dark");
+    });
+
+    test("defaults to System theme preference for first-time visitors", async () => {
+      await renderComponent();
+
+      const systemRadio = screen.getByRole("radio", { name: /System theme/i });
+      const darkRadio = screen.getByRole("radio", { name: /Dark theme/i });
+      const lightRadio = screen.getByRole("radio", { name: /Light theme/i });
+
+      expect(systemRadio).toHaveAttribute("aria-checked", "true");
+      expect(systemRadio).toHaveAttribute("tabindex", "0");
+      expect(darkRadio).toHaveAttribute("aria-checked", "false");
+      expect(darkRadio).toHaveAttribute("tabindex", "-1");
+      expect(lightRadio).toHaveAttribute("aria-checked", "false");
+      expect(lightRadio).toHaveAttribute("tabindex", "-1");
+
+      // Since matchMedia mocked with matches: false, resolved theme is light
+      expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    });
+
+    test("manually selects Dark theme, updates DOM data-theme, and persists to localStorage", async () => {
+      await renderComponent();
+
+      const darkRadio = screen.getByRole("radio", { name: /Dark theme/i });
+      fireEvent.click(darkRadio);
+
+      expect(darkRadio).toHaveAttribute("aria-checked", "true");
+      expect(darkRadio).toHaveAttribute("tabindex", "0");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+      expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    });
+
+    test("manually selects Light theme, updates DOM data-theme, and persists to localStorage", async () => {
+      await renderComponent();
+
+      const lightRadio = screen.getByRole("radio", { name: /Light theme/i });
+      fireEvent.click(lightRadio);
+
+      expect(lightRadio).toHaveAttribute("aria-checked", "true");
+      expect(lightRadio).toHaveAttribute("tabindex", "0");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+      expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    });
+
+    test("restores saved theme preference from localStorage on mount", async () => {
+      localStorage.setItem(THEME_STORAGE_KEY, "dark");
+
+      await renderComponent();
+
+      const darkRadio = screen.getByRole("radio", { name: /Dark theme/i });
+      expect(darkRadio).toHaveAttribute("aria-checked", "true");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    });
+
+    test("reacts dynamically to OS color-scheme changes when System preference is active", async () => {
+      await renderComponent();
+
+      // System preference is active, initially matches: false (light)
+      expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+      // OS switches to dark mode
+      act(() => {
+        matchMediaListeners.forEach((fn) => fn({ matches: true }));
+      });
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+      // OS switches back to light mode
+      act(() => {
+        matchMediaListeners.forEach((fn) => fn({ matches: false }));
+      });
+      expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    });
+
+    test("ignores OS appearance changes when manual theme preference is selected", async () => {
+      await renderComponent();
+
+      // Manually select Dark
+      const darkRadio = screen.getByRole("radio", { name: /Dark theme/i });
+      fireEvent.click(darkRadio);
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+      // OS triggers a change event to light mode
+      act(() => {
+        matchMediaListeners.forEach((fn) => fn({ matches: false }));
+      });
+
+      // Manual dark setting remains untouched
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    });
+
+    test("handles localStorage failures gracefully without crashing", async () => {
+      const setItemSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("QuotaExceededError: LocalStorage limit reached");
+      });
+
+      await renderComponent();
+
+      const darkRadio = screen.getByRole("radio", { name: /Dark theme/i });
+
+      // Changing theme should not throw
+      expect(() => {
+        fireEvent.click(darkRadio);
+      }).not.toThrow();
+
+      expect(darkRadio).toHaveAttribute("aria-checked", "true");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+      setItemSpy.mockRestore();
+    });
+
+    test("supports keyboard arrow navigation across theme options (WAI-ARIA roving tabindex)", async () => {
+      await renderComponent();
+
+      const systemRadio = screen.getByRole("radio", { name: /System theme/i });
+      const darkRadio = screen.getByRole("radio", { name: /Dark theme/i });
+      const lightRadio = screen.getByRole("radio", { name: /Light theme/i });
+
+      expect(systemRadio).toHaveAttribute("aria-checked", "true");
+
+      // ArrowRight from System -> Dark
+      fireEvent.keyDown(systemRadio, { key: "ArrowRight" });
+      expect(darkRadio).toHaveAttribute("aria-checked", "true");
+      expect(darkRadio).toHaveAttribute("tabindex", "0");
+      expect(systemRadio).toHaveAttribute("tabindex", "-1");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+      // ArrowRight from Dark -> Light
+      fireEvent.keyDown(darkRadio, { key: "ArrowRight" });
+      expect(lightRadio).toHaveAttribute("aria-checked", "true");
+      expect(lightRadio).toHaveAttribute("tabindex", "0");
+      expect(darkRadio).toHaveAttribute("tabindex", "-1");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+      // ArrowLeft from Light -> Dark
+      fireEvent.keyDown(lightRadio, { key: "ArrowLeft" });
+      expect(darkRadio).toHaveAttribute("aria-checked", "true");
+      expect(darkRadio).toHaveAttribute("tabindex", "0");
+      expect(lightRadio).toHaveAttribute("tabindex", "-1");
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    });
   });
 });
