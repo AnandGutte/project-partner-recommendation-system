@@ -403,6 +403,80 @@ async function main() {
       { name: "Mobile (375x667)", overflow: mobileOverflow, status: !mobileOverflow ? "PASSED" : "FAILED", screenshot: screenshotMobileCards }
     );
 
+    // Scenario J: Theme Support (Light, Dark, System) & Light Theme Verification
+    console.log("[Scenario J] Testing Theme Switcher & Light Theme Accessibility...");
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise((r) => setTimeout(r, 200));
+
+    // 1. Switch to Light Theme
+    const lightBtn = await page.$("#theme-btn-light");
+    if (lightBtn) await lightBtn.click();
+    await new Promise((r) => setTimeout(r, 200));
+
+    const lightThemeAttr = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+    const storedPref = await page.evaluate(() => localStorage.getItem("partner_theme_pref"));
+
+    const screenshotLightHome = "12-desktop-light-homepage.png";
+    await page.screenshot({ path: path.resolve(evidenceDir, screenshotLightHome), fullPage: true });
+    report.screenshots.push(screenshotLightHome);
+
+    const axeLightHome = await runAxe(page, "Desktop Light Homepage");
+    report.axeAudits.push(axeLightHome);
+    console.log(`    Axe Passes (Light Homepage): ${axeLightHome.passesCount}, Violations: ${axeLightHome.violationsCount}`);
+
+    // 2. Perform Hybrid Search in Light Theme
+    await page.click("#tab-hybrid");
+    const hybridInput = await page.$("#input-username");
+    await hybridInput.click({ clickCount: 3 });
+    await page.keyboard.press("Backspace");
+    await page.type("#input-username", "abhay");
+    const hybridSubmit = await page.$('button[type="submit"]');
+    await hybridSubmit.click();
+    await page.waitForSelector(".candidate-card", { timeout: 15000 });
+
+    const screenshotLightHybrid = "13-desktop-light-hybrid-results.png";
+    await page.screenshot({ path: path.resolve(evidenceDir, screenshotLightHybrid), fullPage: true });
+    report.screenshots.push(screenshotLightHybrid);
+
+    const axeLightHybrid = await runAxe(page, "Desktop Light Hybrid Results");
+    report.axeAudits.push(axeLightHybrid);
+    console.log(`    Axe Passes (Light Hybrid): ${axeLightHybrid.passesCount}, Violations: ${axeLightHybrid.violationsCount}`);
+
+    // 3. Mobile View in Light Theme
+    await page.setViewport({ width: 375, height: 667 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise((r) => setTimeout(r, 300));
+    const mobileLightOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+
+    const screenshotMobileLight = "14-mobile-light-interface.png";
+    await page.screenshot({ path: path.resolve(evidenceDir, screenshotMobileLight) });
+    report.screenshots.push(screenshotMobileLight);
+
+    // 4. Test Dark and System buttons
+    const darkBtn = await page.$("#theme-btn-dark");
+    if (darkBtn) await darkBtn.click();
+    await new Promise((r) => setTimeout(r, 150));
+    const darkThemeAttr = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+
+    const systemBtn = await page.$("#theme-btn-system");
+    if (systemBtn) await systemBtn.click();
+    await new Promise((r) => setTimeout(r, 150));
+    const systemPref = await page.evaluate(() => localStorage.getItem("partner_theme_pref"));
+
+    report.scenarios.push({
+      name: "Theme Selection & Light Theme Accessibility",
+      status:
+        lightThemeAttr === "light" &&
+        storedPref === "light" &&
+        !mobileLightOverflow &&
+        darkThemeAttr === "dark" &&
+        systemPref === "system"
+          ? "PASSED"
+          : "FAILED",
+      details: { lightThemeAttr, storedPref, mobileLightOverflow, darkThemeAttr, systemPref },
+    });
+
     // Summary calculation
     const allViolations = report.axeAudits.flatMap((a) => a.violations);
     const uniqueViolations = [...new Map(allViolations.map((v) => [v.id, v])).values()];

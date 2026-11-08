@@ -25,7 +25,34 @@ const SAMPLE_PROMPTS = [
   "Game developer and modder with C++, Rust, and graphics pipeline experience.",
 ];
 
+export const THEME_STORAGE_KEY = "partner_theme_pref";
+export const THEMES = ["system", "dark", "light"];
+
+export function getInitialThemePreference() {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === "dark" || saved === "light" || saved === "system") {
+      return saved;
+    }
+  } catch {
+    // Storage access restricted (private browsing / security policy)
+  }
+  return "system";
+}
+
+export function resolveActiveTheme(preference) {
+  if (preference === "dark") return "dark";
+  if (preference === "light") return "light";
+  // System preference:
+  if (typeof window !== "undefined" && window.matchMedia) {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return "dark"; // Default fallback
+}
+
 function App() {
+  const [themePreference, setThemePreference] = useState(getInitialThemePreference);
+  const [, setActiveTheme] = useState(() => resolveActiveTheme(getInitialThemePreference()));
   const [activeTab, setActiveTab] = useState("hybrid"); // "hybrid" | "bio"
   const [username, setUsername] = useState("");
   const [location, setLocation] = useState("");
@@ -48,6 +75,76 @@ function App() {
 
   const resultsRef = useRef(null);
   const aboutDialogRef = useRef(null);
+
+  // Update theme and persist to localStorage
+  const handleThemeChange = useCallback((newPref) => {
+    setThemePreference(newPref);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newPref);
+    } catch {
+      // Graceful fallback for restricted storage environments
+    }
+    const resolved = resolveActiveTheme(newPref);
+    setActiveTheme(resolved);
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", resolved);
+    }
+  }, []);
+
+  // Keyboard navigation for WAI-ARIA radiogroup
+  const handleThemeKeyDown = useCallback((e) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const currentIndex = THEMES.indexOf(themePreference);
+      const nextIndex = (currentIndex + 1) % THEMES.length;
+      const nextPref = THEMES[nextIndex];
+      handleThemeChange(nextPref);
+      document.getElementById(`theme-btn-${nextPref}`)?.focus();
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const currentIndex = THEMES.indexOf(themePreference);
+      const prevIndex = (currentIndex - 1 + THEMES.length) % THEMES.length;
+      const prevPref = THEMES[prevIndex];
+      handleThemeChange(prevPref);
+      document.getElementById(`theme-btn-${prevPref}`)?.focus();
+    }
+  }, [themePreference, handleThemeChange]);
+
+  // Synchronize active theme with preference and OS settings
+  useEffect(() => {
+    const resolved = resolveActiveTheme(themePreference);
+    setActiveTheme(resolved);
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", resolved);
+    }
+
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handleOSChange = (e) => {
+      if (themePreference === "system") {
+        const nextTheme = e.matches ? "dark" : "light";
+        setActiveTheme(nextTheme);
+        if (typeof document !== "undefined") {
+          document.documentElement.setAttribute("data-theme", nextTheme);
+        }
+      }
+    };
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleOSChange);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(handleOSChange);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleOSChange);
+      } else if (mediaQuery.removeListener) {
+        mediaQuery.removeListener(handleOSChange);
+      }
+    };
+  }, [themePreference]);
 
   // Load verified metadata on mount
   useEffect(() => {
@@ -317,6 +414,75 @@ function App() {
               <span className="status-text">
                 {apiStatus === "online" ? "API Online" : apiStatus === "checking" ? "Checking API..." : "API Offline"}
               </span>
+            </div>
+
+            {/* Accessible Appearance / Theme Selector */}
+            <div
+              className="theme-selector"
+              role="radiogroup"
+              aria-label="Theme appearance"
+              onKeyDown={handleThemeKeyDown}
+            >
+              <button
+                type="button"
+                role="radio"
+                id="theme-btn-system"
+                tabIndex={themePreference === "system" ? 0 : -1}
+                aria-checked={themePreference === "system"}
+                className={`theme-btn ${themePreference === "system" ? "active" : ""}`}
+                onClick={() => handleThemeChange("system")}
+                title="System appearance (follows OS setting)"
+                aria-label="System theme"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+                <span className="theme-btn-text">System</span>
+              </button>
+
+              <button
+                type="button"
+                role="radio"
+                id="theme-btn-dark"
+                tabIndex={themePreference === "dark" ? 0 : -1}
+                aria-checked={themePreference === "dark"}
+                className={`theme-btn ${themePreference === "dark" ? "active" : ""}`}
+                onClick={() => handleThemeChange("dark")}
+                title="Dark theme"
+                aria-label="Dark theme"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <span className="theme-btn-text">Dark</span>
+              </button>
+
+              <button
+                type="button"
+                role="radio"
+                id="theme-btn-light"
+                tabIndex={themePreference === "light" ? 0 : -1}
+                aria-checked={themePreference === "light"}
+                className={`theme-btn ${themePreference === "light" ? "active" : ""}`}
+                onClick={() => handleThemeChange("light")}
+                title="Light theme"
+                aria-label="Light theme"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+                <span className="theme-btn-text">Light</span>
+              </button>
             </div>
 
             {/* About Modal Trigger */}

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-08T09:11:04.838Z",
+  "timestamp": "2026-11-08T09:38:24.820Z",
   "browser": "Google Chrome",
   "theme": "Dark Developer Dashboard",
   "scenarios": [
@@ -78,6 +78,17 @@
         "teamListCount": 10,
         "closedOnEsc": true
       }
+    },
+    {
+      "name": "Theme Selection & Light Theme Accessibility",
+      "status": "PASSED",
+      "details": {
+        "lightThemeAttr": "light",
+        "storedPref": "light",
+        "mobileLightOverflow": false,
+        "darkThemeAttr": "dark",
+        "systemPref": "system"
+      }
     }
   ],
   "axeAudits": [
@@ -122,6 +133,18 @@
       "passesCount": 49,
       "violationsCount": 0,
       "violations": []
+    },
+    {
+      "context": "Desktop Light Homepage",
+      "passesCount": 45,
+      "violationsCount": 0,
+      "violations": []
+    },
+    {
+      "context": "Desktop Light Hybrid Results",
+      "passesCount": 45,
+      "violationsCount": 0,
+      "violations": []
     }
   ],
   "responsiveChecks": [
@@ -149,11 +172,14 @@
     "07-about-modal.png",
     "09-mobile-recommendation-cards.png",
     "08-mobile-search-interface.png",
-    "10-tablet-layout.png"
+    "10-tablet-layout.png",
+    "12-desktop-light-homepage.png",
+    "13-desktop-light-hybrid-results.png",
+    "14-mobile-light-interface.png"
   ],
   "summary": {
-    "totalTests": 10,
-    "passed": 10,
+    "totalTests": 11,
+    "passed": 11,
     "failed": 0,
     "defectsFound": []
   }
